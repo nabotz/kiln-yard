@@ -100,13 +100,17 @@ export function createEffects(scene, tex) {
 		t.until = now + 0.05;
 	}
 
-	function muzzleFlash(x, y, z, now) {
-		const f = flashes.take();
-		f.sprite.position.set(x, y, z);
-		f.sprite.scale.setScalar(0.45);
-		f.sprite.material.rotation = now * 31;
-		f.sprite.visible = true;
-		f.until = now + 0.05;
+	// A flash at a third-person muzzle and a flicker of light on its surroundings; the viewer's own
+	// gun draws its flash in the weapon scene, so for it only the light is placed.
+	function muzzleFlash(x, y, z, now, own) {
+		if (!own) {
+			const f = flashes.take();
+			f.sprite.position.set(x, y, z);
+			f.sprite.scale.setScalar(0.45);
+			f.sprite.material.rotation = now * 31;
+			f.sprite.visible = true;
+			f.until = now + 0.05;
+		}
 		flashLight.position.set(x, y, z);
 		flashLight.intensity = 6;
 		lightUntil = now + 0.05;
@@ -130,7 +134,7 @@ export function createEffects(scene, tex) {
 			if (e.type === 'shot') {
 				const from = e.s === viewer && viewer.alive ? muzzleOf(tmpA) : tmpA.set(
 					e.x - Math.sin(e.s.yaw) * 0.75, e.y - 0.22, e.z - Math.cos(e.s.yaw) * 0.75);
-				if (e.s !== viewer || !viewer.alive) muzzleFlash(from.x, from.y, from.z, now);
+				muzzleFlash(from.x, from.y, from.z, now, e.s === viewer && viewer.alive);
 				tracer(from, tmpB.set(e.x2, e.y2, e.z2), now);
 			} else if (e.type === 'impact') {
 				const h = holes.take();

@@ -114,7 +114,7 @@ export function createViewmodel(vmScene, tex) {
 	}
 
 	const flash = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex.glow, color: 0xffd9a0, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true }));
-	flash.scale.setScalar(0.16);
+	flash.scale.setScalar(0.5);
 	flash.visible = false;
 
 	const anim = { kick: 0, swayX: 0, swayY: 0, phase: 0, flashUntil: 0, side: 'atk', current: null };
@@ -127,10 +127,12 @@ export function createViewmodel(vmScene, tex) {
 
 	return {
 		// The world position of the player's muzzle, for tracers that start at the gun.
+		// The weapon scene's camera sits at its origin, so the muzzle's position there is a position
+		// in the player's view space: carry it into the world through the main camera.
 		muzzle(camera, out) {
 			if (!anim.current) return out.copy(camera.position);
 			anim.current.muzzle.getWorldPosition(muzzleWorld);
-			return out.copy(muzzleWorld);
+			return out.copy(muzzleWorld).applyMatrix4(camera.matrixWorld);
 		},
 		shot(time) {
 			anim.kick = 1;

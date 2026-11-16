@@ -3,6 +3,7 @@
 import { SENSES } from '../config.js';
 import { eyeHeight } from '../sim/soldier.js';
 import { smokeBlocks } from '../sim/grenades.js';
+import { radio } from '../sim/events.js';
 
 const COS_HALF_FOV = Math.cos(SENSES.fov / 2);
 
@@ -49,6 +50,11 @@ export function perceive(sim, bot) {
 		const miss = b.skill.spray * (0.5 + sim.rng.next());
 		b.errYaw = (sim.rng.next() - 0.5) * miss;
 		b.errPitch = (sim.rng.next() - 0.5) * miss * 0.6;
+		const team = sim.tactics[bot.squad];
+		if (sim.time - team.calledAt > 4) {
+			team.calledAt = sim.time;
+			radio(sim, bot, `Contact, ${sim.grid.calloutAt(best.pos.x, best.pos.z) || 'close'}`);
+		}
 	}
 	if (best) b.lastContact = sim.time;
 	if (b.target && !best) { b.lostX = b.target.pos.x; b.lostZ = b.target.pos.z; b.lostAt = sim.time; }

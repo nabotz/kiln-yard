@@ -8,6 +8,8 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: var(--soot);
 .atk { color: var(--atk); } .def { color: var(--def); }
 #radar { position: fixed; left: 20px; top: 20px; width: 200px; height: 160px; border-radius: 4px; border: 1px solid var(--line); }
 #where { position: fixed; left: 20px; top: 188px; width: 200px; display: flex; justify-content: space-between; font-size: 14px; color: var(--muted); }
+#radio { position: fixed; left: 20px; top: 212px; margin: 0; padding: 0; list-style: none; display: grid; gap: 3px; font-size: 13px; }
+#radio li { padding: 3px 8px; background: var(--panel); border-left: 2px solid var(--hazard); border-radius: 2px; }
 #money { font-family: var(--readout); color: #9fdc8c; font-weight: 600; }
 #scorebar { position: fixed; top: 16px; left: 50%; transform: translateX(-50%); display: flex; align-items: stretch; gap: 2px; }
 .team { display: grid; grid-template-columns: auto auto; align-items: center; column-gap: 12px; padding: 6px 14px; min-width: 190px; }
@@ -41,7 +43,9 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: var(--soot);
 #hitmarker i:nth-child(3) { top: 14px; left: 0; height: 2px; width: 9px; }
 #hitmarker i:nth-child(4) { top: 14px; right: 0; height: 2px; width: 9px; }
 #vitals { position: fixed; left: 20px; bottom: 20px; display: flex; gap: 2px; }
-#vitals div { display: flex; align-items: baseline; gap: 8px; padding: 8px 16px; }
+#vitals div { position: relative; display: flex; align-items: baseline; gap: 8px; padding: 8px 16px; }
+.meter { position: absolute; left: 12px; right: 12px; bottom: 5px; height: 3px; background: rgba(243, 233, 220, 0.12); }
+.meter b { display: block; height: 100%; width: 0; background: var(--ink); }
 #vitals .icon { font-size: 18px; color: var(--muted); }
 #vitals b { font: 600 34px var(--readout); }
 #arms { position: fixed; right: 20px; bottom: 20px; padding: 8px 16px; text-align: right; }
@@ -50,9 +54,9 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: var(--soot);
 #mag { font: 600 40px var(--readout); }
 #mag.empty { color: var(--hurt); }
 #reserve { font: 16px var(--readout); color: var(--muted); }
-#nades { display: flex; justify-content: flex-end; gap: 4px; min-height: 10px; }
-#nades i { width: 8px; height: 10px; border-radius: 2px; }
-#nades .frag { background: #8a9a5a; } #nades .flash { background: #e8e2d2; } #nades .smoke { background: #8c9096; }
+#slots { display: flex; justify-content: flex-end; gap: 6px; margin-top: 4px; font-size: 11px; color: var(--muted); }
+#slots i { font-style: normal; padding: 1px 6px; border: 1px solid var(--line); border-radius: 3px; }
+#slots i.on { color: var(--ink); border-color: var(--hazard); }
 #action { position: fixed; left: 50%; top: 62%; transform: translateX(-50%); width: 280px; text-align: center; opacity: 0; }
 #action.on { opacity: 1; }
 #action-label { font-size: 13px; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 6px; }

@@ -7,6 +7,7 @@ import { buy } from '../sim/shop.js';
 import { sideOf } from '../sim/round.js';
 import { intelNear } from './perception.js';
 import { setTask } from './bot.js';
+import { radio } from '../sim/events.js';
 
 const DEFENCE_SETUPS = [
 	['A', 'A', 'mid', 'B', 'B'], ['A', 'B', 'B', 'mid', 'A'], ['A', 'A', 'B', 'B', 'B'], ['B', 'A', 'A', 'mid', 'A'],
@@ -19,7 +20,7 @@ const CENTERS = { A: world(SITES.A.center), B: world(SITES.B.center) };
 export function createTactics(soldiers) {
 	return [0, 1].map((squad) => ({
 		roster: soldiers.filter((s) => s.squad === squad && s.brain !== null), alive: [],
-		plan: null, executed: false, rushed: false, planted: false, pressure: '', defuser: null,
+		plan: null, executed: false, rushed: false, planted: false, pressure: '', defuser: null, calledAt: -99,
 	}));
 }
 
@@ -114,6 +115,7 @@ function attack(sim, st, bots) {
 	if (charge.state === 'planted') {
 		if (!st.planted) {
 			st.planted = true;
+			radio(sim, bots[0], `Charge is down on ${charge.site}, hold the site`);
 			const site = SITES[charge.site];
 			bots.forEach((bot, i) => {
 				const spot = site.post[i % site.post.length];
@@ -143,6 +145,7 @@ function attack(sim, st, bots) {
 // each group's utility thrown from its staging point first.
 function execute(sim, st, bots) {
 	st.executed = true;
+	radio(sim, bots[0], st.rushed ? `Out of time, everyone ${st.plan.site}!` : `Go ${st.plan.site}, go!`);
 	const site = SITES[st.plan.site];
 	const thrown = new Set();
 	bots.forEach((bot, i) => {
@@ -180,6 +183,7 @@ function defend(sim, st, bots) {
 		const site = SITES[charge.site];
 		if (!st.planted) {
 			st.planted = true;
+			radio(sim, bots[0], `Charge on ${charge.site}, retake!`);
 			bots.forEach((bot, i) => {
 				const hold = site.holds[i % site.holds.length];
 				setTask(bot, 'hold', [world(hold.at)], charge.x, charge.z);
@@ -191,6 +195,7 @@ function defend(sim, st, bots) {
 		if ((!st.defuser || !st.defuser.alive) && (!threat || urgent)) {
 			st.defuser = bots.find((b) => b.kit && Math.hypot(b.pos.x - charge.x, b.pos.z - charge.z) < 25) ?? nearest(bots, charge.x, charge.z);
 			setTask(st.defuser, 'defuse', [{ x: charge.x + 0.4, z: charge.z + 0.4 }], charge.x, charge.z);
+			radio(sim, st.defuser, 'On the charge, cover me');
 		}
 		return;
 	}
@@ -202,6 +207,7 @@ function defend(sim, st, bots) {
 		for (const m of sim.intel[bots[0].squad]) if (sim.time - m.time < 3 && Math.hypot(m.x - c.x, m.z - c.z) < 18) seen++;
 		if (seen >= 2) {
 			st.pressure = key;
+			radio(sim, bots[0], `They're on ${key}, rotating`);
 			bots.forEach((bot, i) => {
 				if (bot.brain.post === key) return;
 				const hold = SITES[key].holds[(i + 1) % SITES[key].holds.length];

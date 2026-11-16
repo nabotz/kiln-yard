@@ -5,6 +5,8 @@ import { MOVE, NADES } from '../config.js';
 import { activeWeapon, eyeHeight } from '../sim/soldier.js';
 import { maxSpeed } from '../sim/movement.js';
 import { perceive, angleDiff } from './perception.js';
+import { NADE_NAMES } from '../sim/weapons.js';
+import { radio } from '../sim/events.js';
 
 const SKILLS = {
 	easy: { reaction: 0.65, turn: 4, settle: 1.9, spray: 0.2, headChance: 0.12, discipline: 0.35 },
@@ -239,6 +241,7 @@ function aimThrow(sim, bot, toss) {
 	if (bot.slot === 'nade' && aligned && sim.time >= bot.deployUntil && bot.throwAt === 0) {
 		c.firePressed = true;
 		if (toss.type === 'frag') b.fragAt = sim.time;
+		radio(sim, bot, `${NADE_NAMES[toss.type]} out`);
 		b.throwing = null;
 	}
 }

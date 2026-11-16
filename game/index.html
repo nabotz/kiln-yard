@@ -12,6 +12,7 @@
 <div id="hud" aria-hidden="true">
 	<canvas id="radar" width="200" height="160"></canvas>
 	<div id="where"><span id="callout"></span><span id="money">$800</span></div>
+	<ul id="radio"></ul>
 	<div id="scorebar">
 		<div id="team0" class="team panel"><span class="name"></span><span class="score">0</span><span class="pips"></span></div>
 		<div id="clock" class="panel"><span id="timer">0:00</span><span id="phase"></span></div>
@@ -20,8 +21,8 @@
 	<ul id="feed"></ul>
 	<div id="crosshair"><i></i><i></i><i></i><i></i></div>
 	<div id="hitmarker"><i></i><i></i><i></i><i></i></div>
-	<div id="vitals"><div class="panel"><span class="icon">✚</span><b id="hp">100</b></div><div class="panel"><span class="icon">◈</span><b id="armor">0</b></div></div>
-	<div id="arms" class="panel"><div id="weapon-name"></div><div id="ammo"><span id="mag">0</span><span id="reserve"></span></div><div id="nades"></div></div>
+	<div id="vitals"><div class="panel"><span class="icon">✚</span><b id="hp">100</b><i class="meter"><b id="hp-bar"></b></i></div><div class="panel"><span class="icon">◈</span><b id="armor">0</b><i class="meter"><b id="armor-bar"></b></i></div></div>
+	<div id="arms" class="panel"><div id="weapon-name"></div><div id="ammo"><span id="mag">0</span><span id="reserve"></span></div><div id="slots"></div></div>
 	<div id="action"><div id="action-label"></div><div class="bar"><i id="action-fill"></i></div></div>
 	<div id="hint"></div>
 	<div id="spectate"></div>

@@ -23,6 +23,9 @@ export function createEvents() {
 	};
 }
 
+// A bot's callout to its squad, shown in the HUD's radio panel.
+export const radio = (sim, s, text) => sim.events.emit('radio', s, text);
+
 // Sounds the bots can hear: a small ring of recent noises with their reach.
 export function createNoises() {
 	const ring = [];

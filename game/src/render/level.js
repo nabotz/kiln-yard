@@ -177,7 +177,7 @@ const SIGNS = [
 
 function wallSign(tex, [text, arrow, x, y, z, yaw]) {
 	const m = new THREE.Mesh(
-		new THREE.PlaneGeometry(arrow ? 2.6 : 3.6, arrow ? 1.3 : 1.8),
+		new THREE.PlaneGeometry(arrow ? 3 : 4, arrow ? 1.5 : 2),
 		new THREE.MeshStandardMaterial({ map: tex.sign(text, arrow), transparent: true, depthWrite: false, roughness: 1, polygonOffset: true, polygonOffsetFactor: -2 }),
 	);
 	m.position.set(x, y, z);

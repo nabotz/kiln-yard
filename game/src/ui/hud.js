@@ -14,8 +14,8 @@ const clock = (t) => `${Math.floor(Math.max(0, t) / 60)}:${String(Math.floor(Mat
 export function createHud() {
 	const el = {};
 	for (const id of ['callout', 'money', 'timer', 'phase', 'feed', 'crosshair', 'hitmarker', 'hp', 'armor', 'weapon-name', 'mag', 'reserve',
-		'nades', 'action', 'action-label', 'action-fill', 'hint', 'banner', 'banner-title', 'banner-sub', 'spectate', 'damage', 'flashbang', 'scope',
-		'board', 'board-body', 'clock']) el[id] = $(id);
+		'action', 'action-label', 'action-fill', 'hint', 'banner', 'banner-title', 'banner-sub', 'spectate', 'damage', 'flashbang', 'scope',
+		'board', 'board-body', 'clock', 'radio', 'slots', 'hp-bar', 'armor-bar']) el[id] = $(id);
 	const teams = [0, 1].map((i) => ({ root: $(`team${i}`), name: $(`team${i}`).querySelector('.name'), score: $(`team${i}`).querySelector('.score'), pips: $(`team${i}`).querySelector('.pips') }));
 	const cache = new Map();
 	const set = (key, node, value, prop = 'textContent') => {
@@ -29,7 +29,8 @@ export function createHud() {
 		node.classList.toggle(name, on);
 	};
 
-	const feed = [];
+	const feed = [], calls = [];
+	const slots = { primary: null, secondary: null, slot: '', nades: -1 };
 	let bannerUntil = 0, hitUntil = 0, hurt = 0, boardAt = 0;
 
 	function banner(title, sub, now, seconds) {
@@ -38,21 +39,31 @@ export function createHud() {
 		bannerUntil = now + seconds;
 	}
 
-	function pushFeed(killer, victim, weapon, head, viewer, now) {
+	// A timed line at the top of a list (the kill feed, the radio); the oldest goes past `max`.
+	function pushLine(lines, root, html, className, until, max) {
 		const li = document.createElement('li');
-		const name = (s) => `<span class="${s.side}">${s.name}</span>`;
+		li.innerHTML = html;
+		li.className = className;
+		root.prepend(li);
+		lines.unshift({ li, until });
+		while (lines.length > max) lines.pop().li.remove();
+	}
+	const expire = (lines, now) => {
+		for (let i = lines.length - 1; i >= 0; i--) if (now > lines[i].until) lines.splice(i, 1)[0].li.remove();
+	};
+	const tag = (s) => `<span class="${s.side}">${s.name}</span>`;
+
+	function pushKill(killer, victim, weapon, head, viewer, now) {
 		const label = WEAPONS[weapon]?.name ?? (weapon === 'frag' ? 'Frag' : 'Charge');
-		li.innerHTML = killer === victim ? `<em>${label}</em> ${name(victim)}` : `${name(killer)} <em>${label}${head ? ' ◉' : ''}</em> ${name(victim)}`;
-		if (killer === viewer || victim === viewer) li.className = 'mine';
-		el.feed.prepend(li);
-		feed.unshift({ li, until: now + 6 });
-		while (feed.length > 5) feed.pop().li.remove();
+		const html = killer === victim ? `<em>${label}</em> ${tag(victim)}` : `${tag(killer)} <em>${label}${head ? ' ◉' : ''}</em> ${tag(victim)}`;
+		pushLine(feed, el.feed, html, killer === viewer || victim === viewer ? 'mine' : '', now + 6, 5);
 	}
 
 	return {
 		event(e, sim, viewer) {
 			const now = sim.time;
-			if (e.type === 'kill') pushFeed(e.o, e.s, e.id, e.n === 1, viewer, now);
+			if (e.type === 'kill') pushKill(e.o, e.s, e.id, e.n === 1, viewer, now);
+			else if (e.type === 'radio' && e.s.squad === viewer.squad) pushLine(calls, el.radio, `${tag(e.s)} ${e.id}`, '', now + 5, 4);
 			else if (e.type === 'hit') {
 				if (e.o === viewer && e.s !== viewer) { hitUntil = now + 0.12; toggle('headhit', el.hitmarker, 'head', e.id === 'head'); }
 				if (e.s === viewer) hurt = Math.min(1, hurt + e.n / 60);
@@ -97,11 +108,17 @@ export function createHud() {
 			set('mag', el.mag, w ? String(w.mag) : String(viewer.nades[viewer.nadeType]));
 			set('reserve', el.reserve, w ? `/ ${w.reserve}` : '');
 			toggle('empty', el.mag, 'empty', w !== null && w.mag === 0);
-			const n = viewer.nades;
-			const nadeKey = n.frag * 100 + n.flash * 10 + n.smoke;
-			if (cache.get('nades') !== nadeKey) {
-				cache.set('nades', nadeKey);
-				el.nades.innerHTML = '<i class="frag"></i>'.repeat(n.frag) + '<i class="flash"></i>'.repeat(n.flash) + '<i class="smoke"></i>'.repeat(n.smoke);
+			set('hpbar', el['hp-bar'].style, `${Math.max(0, viewer.hp)}%`, 'width');
+			set('armorbar', el['armor-bar'].style, `${viewer.armor}%`, 'width');
+
+			// The loadout strip: what keys 1, 2 and 4 hold, the one in hand lit.
+			const n = viewer.nades, held = n.frag + n.flash + n.smoke;
+			if (slots.primary !== viewer.primary || slots.secondary !== viewer.secondary || slots.slot !== viewer.slot || slots.nades !== held) {
+				Object.assign(slots, { primary: viewer.primary, secondary: viewer.secondary, slot: viewer.slot, nades: held });
+				const item = (key, slot, label) => `<i${viewer.slot === slot ? ' class="on"' : ''}>${key} ${label}</i>`;
+				const nades = ['frag', 'flash', 'smoke'].filter((t) => n[t] > 0).map((t) => (n[t] > 1 ? `${NADE_NAMES[t]} ×${n[t]}` : NADE_NAMES[t]));
+				el.slots.innerHTML = (viewer.primary ? item(1, 'primary', viewer.primary.def.name) : '')
+					+ item(2, 'secondary', viewer.secondary.def.name) + (held > 0 ? item(4, 'nade', nades.join(' · ')) : '');
 			}
 
 			// Plant / defuse progress and context hints.
@@ -136,7 +153,8 @@ export function createHud() {
 			set('blind', el.flashbang.style, Math.min(1, viewer.flash / 1.6).toFixed(2), 'opacity');
 			toggle('scope', el.scope, 'on', viewer.scoped && viewer.alive);
 			toggle('banner', el.banner, 'on', now < bannerUntil);
-			for (let i = feed.length - 1; i >= 0; i--) if (now > feed[i].until) feed.splice(i, 1)[0].li.remove();
+			expire(feed, now);
+			expire(calls, now);
 		},
 
 		board(sim, me, show) {

@@ -214,7 +214,11 @@ function bootShot() {
 	const steps = Math.round(shot.t / STEP);
 	for (let i = 0; i < steps; i++) {
 		stepSim(sim);
-		if (i > steps - 6 / STEP) drainEvents();
+		if (i > steps - 6 / STEP) {
+			placeCamera(1);
+			camera.updateMatrixWorld();
+			drainEvents();
+		}
 		else sim.events.clear();
 	}
 	if (shot.buy) {

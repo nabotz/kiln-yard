@@ -218,15 +218,18 @@ function zoneMark(letter) {
 	return texture(c);
 }
 
-// A stencilled wall sign: the site letter with an arrow, or a lane name.
+// A painted board for the walls: a dark panel with a hazard edge, the text and an optional arrow.
 function sign(text, arrow) {
 	const [c, g] = surface(512, 256);
-	g.fillStyle = 'rgba(0,0,0,0)';
-	g.fillRect(0, 0, 512, 256);
+	g.fillStyle = rgb(PALETTE.soot, 0.9);
+	g.fillRect(8, 8, 496, 240);
+	g.strokeStyle = rgb(PALETTE.hazard);
+	g.lineWidth = 10;
+	g.strokeRect(14, 14, 484, 228);
 	g.fillStyle = rgb(PALETTE.sandstone, 1.05);
-	g.font = text.length === 1 ? '900 210px Impact, "Arial Black", sans-serif' : '900 92px Impact, "Arial Black", sans-serif';
+	g.font = `900 ${text.length === 1 ? 190 : 84}px Impact, "Arial Black", sans-serif`;
 	g.textAlign = 'center'; g.textBaseline = 'middle';
-	g.fillText(text, arrow ? 190 : 256, 138);
+	g.fillText(text, arrow ? 190 : 256, 134);
 	if (arrow) {
 		g.beginPath();
 		g.moveTo(330, 90); g.lineTo(430, 128); g.lineTo(330, 166);
