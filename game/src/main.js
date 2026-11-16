@@ -1,7 +1,7 @@
 // Boot and the loop: a fixed 60 Hz simulation fed by the keyboard, rendering at display rate with
 // interpolation, events sent once to effects, audio and HUD. The camera rides the player or a
 // living teammate. ?shot=1&seed=S&t=T&pov=P replays a seeded bot match to second T through
-// soldier P's eyes and freezes there, for reproducible screenshots.
+// soldier P's eyes and freezes there, for reproducible screenshots (shot.js, loaded only then).
 import { STEP, CELL } from './config.js';
 import { createSim, stepSim } from './sim/game.js';
 import { eyeHeight } from './sim/soldier.js';
@@ -15,9 +15,10 @@ import { createSoldierViews } from './render/soldiers.js';
 import { createViewmodel } from './render/viewmodel.js';
 import { createEffects } from './render/effects.js';
 import { createHud } from './ui/hud.js';
-import { createRadar } from './ui/radar.js';
 import { createBuyMenu } from './ui/buymenu.js';
+import { createRadar } from './ui/radar.js';
 import { createAudio } from './audio.js';
+import { createAmbience } from './render/ambience.js';
 
 const params = new URLSearchParams(window.location.search);
 const shot = params.has('shot')
@@ -34,6 +35,7 @@ const level = buildLevel(stage.scene, sim.grid, textures);
 const bodies = createSoldierViews(stage.scene, sim);
 const viewmodel = createViewmodel(stage.vmScene, textures);
 const effects = createEffects(stage.scene, textures);
+const ambience = createAmbience(stage.scene, textures, level.stacks, level.firebox);
 const hud = createHud();
 const radar = createRadar(document.getElementById('radar'), sim.grid);
 const audio = createAudio();
@@ -107,6 +109,7 @@ function render(alpha, dt) {
 	viewer = pickViewer();
 	placeCamera(alpha);
 	level.update(sim.time);
+	ambience.update(sim.time);
 	bodies.update(alpha, dt, viewer);
 	effects.update(sim, dt);
 	viewmodel.update(sim, viewer, dt, input.look.dx, input.look.dy);
@@ -207,33 +210,5 @@ function bootPlay() {
 	requestAnimationFrame(frame);
 }
 
-// Screenshot mode: play the seeded match to the chosen second, feeding the last moments'
-// events to the HUD and effects so the frame carries its kill feed, tracers and bullet holes.
-function bootShot() {
-	overlay.hidden = true;
-	const steps = Math.round(shot.t / STEP);
-	for (let i = 0; i < steps; i++) {
-		stepSim(sim);
-		if (i > steps - 6 / STEP) {
-			placeCamera(1);
-			camera.updateMatrixWorld();
-			drainEvents();
-		}
-		else sim.events.clear();
-	}
-	if (shot.buy) {
-		menu.show(true);
-		menu.refresh(sim, me);
-	}
-	let frames = 0;
-	const still = () => {
-		render(1, STEP);
-		if (shot.board) hud.board(sim, me, true);
-		if (++frames < 4) requestAnimationFrame(still);
-		else window.__shotReady = true;
-	};
-	requestAnimationFrame(still);
-}
-
-if (shot) bootShot();
+if (shot) import('./shot.js').then((m) => m.runShot({ sim, me, camera, menu, hud, overlay, placeCamera, drainEvents, render }, shot));
 else bootPlay();

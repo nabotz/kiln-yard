@@ -8,7 +8,8 @@ const box = (w, h, d) => new THREE.BoxGeometry(w, h, d);
 const GEO = {
 	thigh: box(0.17, 0.46, 0.19), shin: box(0.15, 0.44, 0.17), knee: box(0.17, 0.1, 0.06), boot: box(0.17, 0.11, 0.27),
 	belt: box(0.46, 0.09, 0.27), chest: box(0.44, 0.5, 0.25), plate: box(0.48, 0.34, 0.3), pack: box(0.34, 0.36, 0.14),
-	pad: box(0.15, 0.08, 0.18), head: box(0.21, 0.24, 0.22), helmet: box(0.27, 0.12, 0.28), visor: box(0.19, 0.05, 0.02),
+	pad: box(0.15, 0.08, 0.18), head: box(0.21, 0.24, 0.22), visor: box(0.19, 0.05, 0.02), pouch: box(0.1, 0.12, 0.05),
+	helmet: new THREE.SphereGeometry(0.16, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2), cap: new THREE.SphereGeometry(0.128, 14, 7, 0, Math.PI * 2, 0, Math.PI / 2),
 	limb: box(0.1, 0.1, 1), glove: box(0.09, 0.09, 0.1), gun: box(0.07, 0.11, 1), charge: box(0.26, 0.16, 0.08),
 };
 const Z_AXIS = new THREE.Vector3(0, 0, 1);
@@ -73,12 +74,15 @@ function buildFigure(soldier, mats) {
 	part(GEO.belt, 'gear', 0, 0.03, 0, torso);
 	part(GEO.chest, 'jacket', 0, 0.29, 0, torso);
 	const plate = part(GEO.plate, 'gear', 0, 0.33, 0, torso);
+	for (const x of [-0.13, 0, 0.13]) part(GEO.pouch, 'helmet', x, -0.08, -0.17, plate);
 	part(GEO.pack, 'gear', 0, 0.3, 0.19, torso);
 	const charge = part(GEO.charge, 'charge', 0, 0.33, 0.29, torso);
 	for (const x of [-0.25, 0.25]) part(GEO.pad, 'gear', x, 0.5, 0, torso);
 	const neck = joint(torso, 0, 0.62);
 	part(GEO.head, 'skin', 0, 0.02, 0, neck);
-	const helmet = part(GEO.helmet, 'helmet', 0, 0.14, 0, neck);
+	// A soft cap in the side's colour, or a steel helmet once one is bought.
+	const cap = part(GEO.cap, 'jacket', 0, 0.1, 0.01, neck);
+	const helmet = part(GEO.helmet, 'helmet', 0, 0.08, 0.01, neck);
 	part(GEO.visor, 'visor', 0, 0.05, -0.115, neck);
 	// Rifle at the ready: right hand on the grip, left hand under the fore-end.
 	const arms = joint(torso, 0, 0.46);
@@ -89,7 +93,7 @@ function buildFigure(soldier, mats) {
 	part(GEO.glove, 'glove', 0.07, -0.1, -0.32, arms);
 	part(GEO.glove, 'glove', 0.02, -0.08, -0.54, arms);
 	const gun = part(GEO.gun, 'gun', 0.05, -0.04, -0.45, arms);
-	return { soldier, root, hips, torso, neck, arms, gun, plate, helmet, charge, legL, legR, side: soldier.side, phase: 0, tint };
+	return { soldier, root, hips, torso, neck, arms, gun, plate, helmet, cap, charge, legL, legR, side: soldier.side, phase: 0, tint };
 }
 
 function retint(view, mats) {
@@ -131,6 +135,7 @@ export function createSoldierViews(scene, sim) {
 		v.gun.visible = s.alive;
 		v.plate.visible = s.armor > 0;
 		v.helmet.visible = s.helmet;
+		v.cap.visible = !s.helmet;
 		v.charge.visible = s.hasCharge;
 		const w = activeWeapon(s);
 		const length = !w ? 0.15 : w.def.slot === 'primary' ? 0.78 : 0.26;

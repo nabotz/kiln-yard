@@ -20,7 +20,7 @@ export function createSoldier(id, name, squad, isPlayer) {
 		primary: null, secondary: makeWeapon('wasp'),
 		nades: { frag: 0, smoke: 0, flash: 0 }, nadeType: 'frag',
 		slot: 'secondary', lastSlot: 'secondary', deployUntil: 0, throwAt: 0, scoped: false,
-		recoilPitch: 0, recoilYaw: 0, flash: 0, stride: 0, busy: false,
+		recoilPitch: 0, recoilYaw: 0, flash: 0, tag: 0, stride: 0, busy: false,
 		hasCharge: false, kills: 0, deaths: 0, damageDealt: 0, diedAt: -99,
 		cmd: createCommand(), brain: null,
 	};

@@ -1,4 +1,4 @@
-// Kiln Yard, an original map of a brickworks, drawn in text: one character per 2 m cell.
+// Clayfield, an original map of a brickworks, drawn in text: one character per 2 m cell.
 // Cinder Cell attacks from the clay yard (south), Halcyon Watch defends from the office (north).
 // Site A is the kiln hall (west), B the loading dock (east); A Long, Mid and B Yard run between.
 //   #  brick wall   C  tall crates   c  waist-high crate   =  barrier   K  kiln

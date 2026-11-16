@@ -1,4 +1,4 @@
-// Kiln Yard's hand-in (Node 22, standard library only). The game is game/: static ES modules the
+// Clayfield's hand-in (Node 22, standard library only). The game is game/: static ES modules the
 // browser loads with three.js 0.187.0 through an import map, no build step. This program copies
 // game/ and screenshots/ to /output and writes /output/dossier.json, the summary the judge reads,
 // with the kit's make.fun library. Outside the grader MAKEFUN_OUTPUT_DIR stands in for /output:

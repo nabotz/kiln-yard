@@ -9,7 +9,7 @@ import { dropCharge } from './charge.js';
 const PART_SCALE = { head: 1, chest: 1, stomach: 1.25, legs: 0.75 };
 const dir = { x: 0, y: 0, z: 0 };
 const kick = { pitch: 0, yaw: 0 };
-const worldHit = { t: 0, nx: 0, ny: 0, nz: 0, cell: null };
+const worldHit = { t: 0, exit: 0, nx: 0, ny: 0, nz: 0, cell: null };
 const bodyHit = { t: Infinity, soldier: null, part: '' };
 
 // Per step: weapon switching, reloading, scoping, firing or throwing, recoil recovery.
@@ -116,20 +116,10 @@ function fire(sim, s, w) {
 		const r = spread * sim.rng.next();
 		const a = sim.rng.next() * Math.PI * 2;
 		aimVector(s.yaw + s.recoilYaw + Math.cos(a) * r, s.pitch + s.recoilPitch + Math.sin(a) * r, dir);
-		const tWorld = sim.grid.raycast(ox, oy, oz, dir.x, dir.y, dir.z, 120, worldHit);
-		traceBodies(sim, s, ox, oy, oz, dir, tWorld);
-		const t = Math.min(tWorld, bodyHit.t, 120);
+		const end = trace(sim, s, d, ox, oy, oz);
 		if (p === 0) {
 			e.x = ox; e.y = oy; e.z = oz;
-			e.x2 = ox + dir.x * t; e.y2 = oy + dir.y * t; e.z2 = oz + dir.z * t;
-		}
-		if (bodyHit.soldier) {
-			const amount = damageAt(d, bodyHit.t) * (bodyHit.part === 'head' ? d.head : PART_SCALE[bodyHit.part]);
-			applyDamage(sim, bodyHit.soldier, s, amount, bodyHit.part, d.id, d.pen, ox + dir.x * t, oy + dir.y * t, oz + dir.z * t);
-		} else if (tWorld < 120) {
-			const hit = sim.events.emit('impact', null, worldHit.cell ? worldHit.cell.mat : 'floor');
-			hit.x = ox + dir.x * tWorld; hit.y = oy + dir.y * tWorld; hit.z = oz + dir.z * tWorld;
-			hit.x2 = worldHit.nx; hit.y2 = worldHit.ny; hit.z2 = worldHit.nz;
+			e.x2 = ox + dir.x * end; e.y2 = oy + dir.y * end; e.z2 = oz + dir.z * end;
 		}
 	}
 
@@ -140,6 +130,34 @@ function fire(sim, s, w) {
 	w.bloom += d.spread.bloom;
 	if (d.scope) s.scoped = false;
 	sim.noises.add(ox, oz, s.squad, SENSES.gunshotRadius, now);
+}
+
+// One bullet along `dir`: the first body or box it meets. A wooden crate is thin enough to shoot
+// through, at a cost in damage set by the weapon's penetration; anything else stops it. Returns
+// the distance it travelled.
+function trace(sim, s, d, ox, oy, oz) {
+	let sx = ox, sy = oy, sz = oz, gone = 0, power = 1;
+	for (let layer = 0; layer < 3; layer++) {
+		const reach = 120 - gone;
+		const tWorld = sim.grid.raycast(sx, sy, sz, dir.x, dir.y, dir.z, reach, worldHit);
+		traceBodies(sim, s, sx, sy, sz, dir, tWorld);
+		if (bodyHit.soldier) {
+			const t = bodyHit.t, scale = bodyHit.part === 'head' ? d.head : PART_SCALE[bodyHit.part];
+			applyDamage(sim, bodyHit.soldier, s, damageAt(d, gone + t) * scale * power, bodyHit.part, d.id, d.pen,
+				sx + dir.x * t, sy + dir.y * t, sz + dir.z * t);
+			return gone + t;
+		}
+		if (tWorld >= reach) return 120;
+		const hit = sim.events.emit('impact', null, worldHit.cell ? worldHit.cell.mat : 'floor');
+		hit.x = sx + dir.x * tWorld; hit.y = sy + dir.y * tWorld; hit.z = sz + dir.z * tWorld;
+		hit.x2 = worldHit.nx; hit.y2 = worldHit.ny; hit.z2 = worldHit.nz;
+		power *= d.pen * 0.6;
+		if (worldHit.cell?.mat !== 'crate' || power < 0.25) return gone + tWorld;
+		const out = worldHit.exit + 0.02;
+		sx += dir.x * out; sy += dir.y * out; sz += dir.z * out;
+		gone += out;
+	}
+	return gone;
 }
 
 // Nearest enemy body part along the ray, closer than the wall at tWorld. Friendly fire is off.
@@ -196,6 +214,7 @@ export function applyDamage(sim, victim, attacker, amount, part, weaponId, pen, 
 	}
 	hp = Math.min(victim.hp, Math.round(hp));
 	victim.hp -= hp;
+	victim.tag = 0.35;
 	if (attacker !== victim) attacker.damageDealt += hp;
 	const e = sim.events.emit('hit', victim, part);
 	e.o = attacker; e.n = hp; e.x = hx; e.y = hy; e.z = hz;

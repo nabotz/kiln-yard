@@ -12,7 +12,8 @@ export function maxSpeed(s) {
 	const scope = s.scoped ? 0.55 : 1;
 	const walk = s.cmd.walk ? MOVE.walkScale : 1;
 	const crouch = 1 + (MOVE.crouchScale - 1) * s.crouch;
-	return MOVE.runSpeed * mobility * scope * walk * crouch;
+	const tagged = s.tag > 0 ? 0.5 : 1; // a hit staggers: being shot slows you for a moment
+	return MOVE.runSpeed * mobility * scope * walk * crouch * tagged;
 }
 
 function accelerate(v, wx, wz, wishSpeed, accel, dt) {
@@ -27,6 +28,7 @@ function accelerate(v, wx, wz, wishSpeed, accel, dt) {
 export function moveSoldier(sim, s, dt, frozen) {
 	const c = s.cmd;
 	const v = s.vel;
+	s.tag = Math.max(0, s.tag - dt);
 
 	const wantCrouch = c.crouch ? 1 : 0;
 	s.crouch += Math.max(-MOVE.crouchRate * dt, Math.min(MOVE.crouchRate * dt, wantCrouch - s.crouch));

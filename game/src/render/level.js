@@ -114,9 +114,19 @@ export function buildLevel(scene, grid, tex) {
 	scene.add(kiln.group);
 	for (const [zone, map] of [['A', tex.zoneA], ['B', tex.zoneB]]) scene.add(zoneMarking(grid, zone, map));
 	for (const s of SIGNS) scene.add(wallSign(tex, s));
-	scene.add(skyline(W, D, mat.shed, mat.wall), ...lamps());
+	const stacks = chimneys(W, D);
+	scene.add(skyline(W, D, stacks, mat.shed, mat.wall), rooftops(grid, mat), ...lamps());
+	for (const [x0, x1, z0, z1] of ROOFS) {
+		const roof = new THREE.Mesh(new THREE.BoxGeometry(x1 - x0, 0.1, z1 - z0), mat.crateTall);
+		roof.position.set((x0 + x1) / 2, 4.6, (z0 + z1) / 2);
+		roof.castShadow = true;
+		scene.add(roof);
+	}
+	const k = kiln.group.position;
 
 	return {
+		stacks: [...stacks.map(([x, z, h]) => ({ x, y: h, z })), { x: k.x, y: 6.2, z: k.z }],
+		firebox: { x: k.x, y: 0.4, z: k.z - 2.3 },
 		update(time) {
 			kiln.light.intensity = 9 + Math.sin(time * 7.3) * 1.6 + Math.sin(time * 17.1) * 0.9;
 		},
@@ -139,8 +149,13 @@ function buildKiln(grid, brick) {
 	dome.position.y = 2.1;
 	const stack = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.4, 2.6, 12), material);
 	stack.position.y = 4.9;
-	const mouth = new THREE.Mesh(new THREE.PlaneGeometry(0.9, 1.1), new THREE.MeshBasicMaterial({ color: PALETTE.ember }));
-	mouth.position.set(0, 0.6, -2.02);
+	const arch = new THREE.Shape();
+	arch.moveTo(-0.45, 0);
+	arch.lineTo(-0.45, 0.6);
+	arch.absarc(0, 0.6, 0.45, Math.PI, 0, true);
+	arch.lineTo(0.45, 0);
+	const mouth = new THREE.Mesh(new THREE.ShapeGeometry(arch), new THREE.MeshBasicMaterial({ color: PALETTE.ember }));
+	mouth.position.set(0, 0.02, -2.06);
 	mouth.rotation.y = Math.PI;
 	for (const m of [drum, dome, stack]) { m.castShadow = true; m.receiveShadow = true; }
 	const light = new THREE.PointLight(PALETTE.ember, 9, 9, 1.6);
@@ -185,8 +200,38 @@ function wallSign(tex, [text, arrow, x, y, z, yaw]) {
 	return m;
 }
 
-// Sheds and chimneys beyond the walls, so the yard sits inside a works and not in a void.
-function skyline(W, D, shedMat, brick) {
+// Chimneys beyond the walls [x, z, height], and the sheds around them, so the yard sits inside a
+// works and not in a void.
+const chimneys = (W, D) => [[-14, 24, 34], [W + 16, 44, 40], [36, -18, 30], [58, D + 20, 36], [W + 10, D + 14, 28]];
+
+// Corrugated roofs over the Kiln Passage and the Catwalk [x0, x1, z0, z1], resting on their walls.
+const ROOFS = [[24, 36, 13.9, 18.1], [44, 56, 11.9, 16.1]];
+
+// Water tanks and vent housings on the roofs of the buildings, where a core cell is surrounded by
+// building on every side.
+function rooftops(grid, mat) {
+	const g = new THREE.Group();
+	const rng = createRng(23);
+	const tank = new THREE.CylinderGeometry(0.85, 0.85, 1.7, 14), stand = new THREE.BoxGeometry(1.5, 0.9, 1.5), vent = new THREE.BoxGeometry(1.4, 0.8, 1.1);
+	for (const c of grid.cells) {
+		if (c.top <= KINDS['#'].top || !rng.chance(0.16)) continue;
+		let deep = true;
+		for (let dz = -1; dz <= 1; dz++) for (let dx = -1; dx <= 1; dx++) if ((grid.at(c.x + dx, c.z + dz)?.top ?? 0) < c.top) deep = false;
+		if (!deep) continue;
+		const x = (c.x + 0.5) * CELL, z = (c.z + 0.5) * CELL;
+		const parts = rng.chance(0.5) ? [[stand, mat.barrier, 0.45], [tank, mat.crateTall, 1.75]] : [[vent, mat.barrier, 0.4]];
+		for (const [geo, material, y] of parts) {
+			const m = new THREE.Mesh(geo, material);
+			m.position.set(x, c.top + y, z);
+			m.castShadow = true;
+			g.add(m);
+		}
+	}
+	return g;
+}
+
+// Sheds around the chimneys beyond the walls, so the yard sits inside a works and not in a void.
+function skyline(W, D, stacks, shedMat, brick) {
 	const g = new THREE.Group();
 	const rng = createRng(11);
 	const b = createBuilder();
@@ -205,7 +250,7 @@ function skyline(W, D, shedMat, brick) {
 	const stackMat = brick.clone();
 	stackMat.map = brick.map.clone();
 	stackMat.map.repeat.set(2, 6);
-	for (const [x, z, h] of [[-14, 24, 34], [W + 16, 44, 40], [36, -18, 30], [58, D + 20, 36], [W + 10, D + 14, 28]]) {
+	for (const [x, z, h] of stacks) {
 		const stack = new THREE.Mesh(new THREE.CylinderGeometry(1.4, 2.3, h, 18), stackMat);
 		stack.position.set(x, h / 2, z);
 		const rim = new THREE.Mesh(new THREE.CylinderGeometry(1.55, 1.55, 0.8, 18), new THREE.MeshBasicMaterial({ color: PALETTE.ember }));

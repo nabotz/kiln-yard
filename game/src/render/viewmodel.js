@@ -26,7 +26,7 @@ function mesh(geo, mat, x, y, z, parent) {
 // Gloved hands on the grip and the fore-end, forearms angled down and out of frame.
 function hands(group, sleeve, glove, nearZ, farZ) {
 	const forearm = new THREE.BoxGeometry(0.055, 0.055, 0.22);
-	const fist = new THREE.BoxGeometry(0.05, 0.055, 0.08);
+	const fist = new THREE.BoxGeometry(0.058, 0.062, 0.095);
 	mesh(fist, glove, 0, -0.065, nearZ, group);
 	mesh(forearm, sleeve, 0.03, -0.15, nearZ + 0.12, group).rotation.set(0.75, 0.15, 0);
 	mesh(fist, glove, -0.005, -0.05, farZ, group);
@@ -79,7 +79,7 @@ export function createViewmodel(vmScene, tex) {
 		metal: new THREE.MeshStandardMaterial({ color: PALETTE.gunmetal, roughness: 0.4, metalness: 0.7 }),
 		trim: new THREE.MeshStandardMaterial({ color: PALETTE.gunTrim, roughness: 0.45, metalness: 0.4 }),
 		wood: new THREE.MeshStandardMaterial({ color: PALETTE.timberDark, roughness: 0.7 }),
-		glove: new THREE.MeshStandardMaterial({ color: PALETTE.soot, roughness: 0.9 }),
+		glove: new THREE.MeshStandardMaterial({ color: 0x7a5a40, roughness: 0.8 }),
 		sleeve: { atk: new THREE.MeshStandardMaterial({ color: PALETTE.attack, roughness: 0.85 }), def: new THREE.MeshStandardMaterial({ color: PALETTE.defend, roughness: 0.85 }) },
 	};
 	const rig = new THREE.Group();

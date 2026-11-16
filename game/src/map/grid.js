@@ -87,7 +87,7 @@ export function createGrid() {
 	}
 
 	// First thing a ray meets within maxDist: a box, the floor or the map's edge. Fills `hit`
-	// ({ t, nx, ny, nz, cell }) and returns t (Infinity for nothing). Direction must be unit length.
+	// ({ t, exit, nx, ny, nz, cell }; exit is where the ray leaves a box) and returns t (Infinity for nothing). Direction must be unit length.
 	function raycast(ox, oy, oz, dx, dy, dz, maxDist, hit) {
 		let limit = maxDist;
 		let floorHit = false;
@@ -108,6 +108,7 @@ export function createGrid() {
 				const th = slab(c, ox, oy, oz, dx, dy, dz, hit);
 				if (th <= limit) {
 					hit.t = th;
+					hit.exit = span.max;
 					hit.cell = c;
 					return th;
 				}
@@ -125,7 +126,7 @@ export function createGrid() {
 		return Infinity;
 	}
 
-	const scratch = { t: 0, nx: 0, ny: 0, nz: 0, cell: null };
+	const scratch = { t: 0, exit: 0, nx: 0, ny: 0, nz: 0, cell: null };
 	// True when nothing solid lies between two points (bots' sight, grenade damage).
 	function clearSight(ax, ay, az, bx, by, bz) {
 		const dx = bx - ax, dy = by - ay, dz = bz - az;

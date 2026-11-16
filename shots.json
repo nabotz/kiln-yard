@@ -1,6 +1,6 @@
 [
-  { "name": "1-firefight.jpg", "query": "?shot=1&seed=6&t=76.1167&pov=4" },
-  { "name": "2-plant.jpg", "query": "?shot=1&seed=11&t=67.7167&pov=4" },
-  { "name": "3-buy.jpg", "query": "?shot=1&seed=12&t=144.3167&pov=2&buy" },
-  { "name": "4-match-won.jpg", "query": "?shot=1&seed=5&t=384.8&pov=6&board" }
+  { "name": "1-firefight.jpg", "query": "?shot=1&seed=13&t=80.7333&pov=1" },
+  { "name": "2-plant.jpg", "query": "?shot=1&seed=16&t=147.9&pov=3" },
+  { "name": "3-buy.jpg", "query": "?shot=1&seed=12&t=141.6667&pov=4&buy" },
+  { "name": "4-match-won.jpg", "query": "?shot=1&seed=11&t=386.6167&pov=9&board" }
 ]

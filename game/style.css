@@ -86,7 +86,7 @@ button { font: inherit; cursor: pointer; }
 .skill[aria-pressed='true'] { border-color: var(--hazard); color: var(--ink); }
 .keys { margin: 22px 0 0; font-size: 13px; line-height: 2; color: var(--muted); }
 kbd { display: inline-block; min-width: 22px; margin-right: 6px; padding: 1px 6px; border: 1px solid var(--line); border-radius: 4px; font: 12px var(--readout); color: var(--ink); text-align: center; }
-#buy { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(920px, 96vw); padding: 22px 24px; background: rgba(21, 17, 15, 0.93); }
+#buy { position: fixed; left: 50%; top: 57%; transform: translate(-50%, -50%); width: min(920px, 96vw); padding: 22px 24px; background: rgba(21, 17, 15, 0.93); }
 #buy header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 14px; }
 #buy h2 { margin: 0; font-size: 22px; letter-spacing: 0.08em; text-transform: uppercase; }
 .buy-status { font-family: var(--readout); color: #9fdc8c; }
