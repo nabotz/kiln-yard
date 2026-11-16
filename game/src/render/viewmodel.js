@@ -110,7 +110,7 @@ export function createViewmodel(vmScene, tex) {
 		sleeves.push(arm);
 		holder.visible = false;
 		rig.add(holder);
-		models['nade:' + type] = { group: body, holder, mag: null, magY: 0, muzzle: body, hold: [0.14, -0.14, -0.3] };
+		models[type] = { group: body, holder, mag: null, magY: 0, muzzle: body, hold: [0.14, -0.14, -0.3] };
 	}
 
 	const flash = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex.flare, color: 0xffd9a0, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true }));
@@ -141,7 +141,7 @@ export function createViewmodel(vmScene, tex) {
 		update(sim, s, dt, lookX, lookY) {
 			if (s.side !== anim.side) setSide(s.side);
 			const w = activeWeapon(s);
-			const key = w ? w.def.id : 'nade:' + s.nadeType;
+			const key = w ? w.def.id : s.nadeType;
 			const model = models[key];
 			if (anim.current !== model) {
 				if (anim.current) anim.current.holder.visible = false;

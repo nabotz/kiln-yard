@@ -7,7 +7,7 @@ export function createInput(canvas, onLock) {
 	const held = new Set();
 	const latched = new Set();
 	const typed = [];
-	const look = { yaw: 0, pitch: 0, dx: 0, dy: 0, scale: 1 };
+	const look = { yaw: 0, pitch: 0, dx: 0, dy: 0, scale: 1, sens: 1 };
 	let fireHeld = false, firePressed = false, scopePressed = false;
 	let locked = false; // the game has the mouse: pointer lock, or free look where lock is refused
 	let free = false;   // pointer lock refused (a frame without the permission, an automated browser)
@@ -25,8 +25,9 @@ export function createInput(canvas, onLock) {
 	document.addEventListener('pointerlockerror', goFree);
 	document.addEventListener('mousemove', (e) => {
 		if (!locked) return;
-		look.yaw -= e.movementX * SENSITIVITY * look.scale;
-		look.pitch = Math.max(-1.45, Math.min(1.45, look.pitch - e.movementY * SENSITIVITY * look.scale));
+		const k = SENSITIVITY * look.scale * look.sens;
+		look.yaw -= e.movementX * k;
+		look.pitch = Math.max(-1.45, Math.min(1.45, look.pitch - e.movementY * k));
 		look.dx += e.movementX;
 		look.dy += e.movementY;
 	});

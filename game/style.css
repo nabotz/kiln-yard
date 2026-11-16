@@ -85,6 +85,9 @@ button { font: inherit; cursor: pointer; }
 .primary:hover { background: var(--ink); }
 .skill { padding: 9px 14px; border: 1px solid var(--line); border-radius: 6px; background: transparent; color: var(--muted); }
 .skill[aria-pressed='true'] { border-color: var(--hazard); color: var(--ink); }
+.sens { display: flex; align-items: center; gap: 10px; margin-top: 18px; font-size: 13px; color: var(--muted); }
+.sens input { width: 200px; accent-color: var(--hazard); }
+.sens output { font-family: var(--readout); color: var(--ink); }
 .keys { margin: 22px 0 0; font-size: 13px; line-height: 2; color: var(--muted); }
 kbd { display: inline-block; min-width: 22px; margin-right: 6px; padding: 1px 6px; border: 1px solid var(--line); border-radius: 4px; font: 12px var(--readout); color: var(--ink); text-align: center; }
 #buy { position: fixed; left: 50%; top: 57%; transform: translate(-50%, -50%); width: min(920px, 96vw); padding: 22px 24px; background: rgba(21, 17, 15, 0.93); }

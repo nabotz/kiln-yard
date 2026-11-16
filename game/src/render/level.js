@@ -4,10 +4,9 @@
 import * as THREE from 'three';
 import { CELL } from '../config.js';
 import { PALETTE } from '../palette.js';
-import { createRng } from '../rng.js';
 import { KINDS, PAVED } from '../map/layout.js';
 
-function createBuilder() {
+export function createBuilder() {
 	return { pos: [], nor: [], uv: [], idx: [] };
 }
 
@@ -24,7 +23,7 @@ function quad(b, a, u, v, n, u0, v0, u1, v1) {
 // The four side faces of a box and its top. `tile` is either [u, v] metres per texture repeat
 // (tiled in world units, so neighbouring boxes line up) or a number: one repeat across each face
 // and that many up it (a crate shows its whole frame on every side).
-function box(b, x0, y0, z0, x1, y1, z1, tile, top = true) {
+export function box(b, x0, y0, z0, x1, y1, z1, tile, top = true) {
 	const w = x1 - x0, h = y1 - y0, d = z1 - z0;
 	const uv = (along, len) => (Array.isArray(tile)
 		? [along / tile[0], y0 / tile[1], (along + len) / tile[0], y1 / tile[1]]
@@ -48,7 +47,7 @@ function wallFace(b, c, dx, dz, y0, y1, tall, base) {
 	else quad(b, [c.maxX, y0, c.minZ], [-CELL, 0, 0], [0, h, 0], [0, 0, -1], -c.maxX / 4, v0, -c.minX / 4, v1);
 }
 
-function toMesh(b, material) {
+export function toMesh(b, material) {
 	const g = new THREE.BufferGeometry();
 	g.setAttribute('position', new THREE.Float32BufferAttribute(b.pos, 3));
 	g.setAttribute('normal', new THREE.Float32BufferAttribute(b.nor, 3));
@@ -71,7 +70,6 @@ export function buildLevel(scene, grid, tex) {
 		crateTall: new THREE.MeshStandardMaterial({ map: tex.steel, roughness: 0.55, metalness: 0.35 }),
 		barrier: new THREE.MeshStandardMaterial({ map: tex.concrete, roughness: 0.9 }),
 		facade: new THREE.MeshStandardMaterial({ map: tex.facade, emissiveMap: tex.facadeGlow, emissive: 0xffb873, emissiveIntensity: 0.95, roughness: 0.9 }),
-		shed: new THREE.MeshStandardMaterial({ map: tex.brick, color: 0x9a8a80, roughness: 1 }),
 	};
 
 	const floor = createBuilder();
@@ -113,12 +111,10 @@ export function buildLevel(scene, grid, tex) {
 	const kiln = buildKiln(grid, mat.wall);
 	scene.add(kiln.group);
 	for (const [zone, map] of [['A', tex.zoneA], ['B', tex.zoneB]]) scene.add(zoneMarking(grid, zone, map));
-	const stacks = chimneys(W, D);
-	scene.add(skyline(W, D, stacks, mat.shed, mat.wall), ...lamps());
 	const k = kiln.group.position;
 
 	return {
-		stacks: [...stacks.map(([x, z, h]) => ({ x, y: h, z })), { x: k.x, y: 6.2, z: k.z }],
+		kilnTop: { x: k.x, y: 6.2, z: k.z },
 		firebox: { x: k.x, y: 0.4, z: k.z - 2.3 },
 		update(time) {
 			kiln.light.intensity = 9 + Math.sin(time * 7.3) * 1.6 + Math.sin(time * 17.1) * 0.9;
@@ -171,52 +167,4 @@ function zoneMarking(grid, zone, map) {
 	m.position.set(((x0 + x1) / 2) * CELL, 0.01, ((z0 + z1) / 2) * CELL);
 	m.receiveShadow = true;
 	return m;
-}
-
-// Chimneys beyond the walls [x, z, height], and the sheds around them, so the yard sits inside a
-// works and not in a void.
-const chimneys = (W, D) => [[-14, 24, 34], [W + 16, 44, 40], [36, -18, 30], [58, D + 20, 36], [W + 10, D + 14, 28]];
-
-// Sheds around the chimneys beyond the walls, so the yard sits inside a works and not in a void.
-function skyline(W, D, stacks, shedMat, brick) {
-	const g = new THREE.Group();
-	const rng = createRng(11);
-	const b = createBuilder();
-	for (let i = 0; i < 16; i++) {
-		const side = i % 4;
-		const t = (Math.floor(i / 4) + 0.5) / 4;
-		const h = 8 + rng.next() * 9, len = 14 + rng.next() * 10, deep = 10 + rng.next() * 8, gap = 6 + rng.next() * 10;
-		const along = (side < 2 ? W : D) * t - len / 2;
-		const out = side % 2 === 0 ? -gap - deep : (side < 2 ? D : W) + gap;
-		if (side < 2) box(b, along, 0, out, along + len, h, out + deep, [4, 5.2]);
-		else box(b, out, 0, along, out + deep, h, along + len, [4, 5.2]);
-	}
-	const sheds = toMesh(b, shedMat);
-	sheds.castShadow = false;
-	g.add(sheds);
-	const stackMat = brick.clone();
-	stackMat.map = brick.map.clone();
-	stackMat.map.repeat.set(2, 6);
-	for (const [x, z, h] of stacks) {
-		const stack = new THREE.Mesh(new THREE.CylinderGeometry(1.4, 2.3, h, 18), stackMat);
-		stack.position.set(x, h / 2, z);
-		const rim = new THREE.Mesh(new THREE.CylinderGeometry(1.55, 1.55, 0.8, 18), new THREE.MeshBasicMaterial({ color: PALETTE.ember }));
-		rim.position.set(x, h, z);
-		g.add(stack, rim);
-	}
-	return g;
-}
-
-// Work lamps over the sites and mid: an emissive shade and a warm point light each.
-function lamps() {
-	const out = [];
-	const shade = new THREE.MeshBasicMaterial({ color: 0xffe2b0 });
-	for (const [x, z] of [[12, 9], [67, 9], [40, 30], [40, 56]]) {
-		const lamp = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.12, 0.35), shade);
-		lamp.position.set(x, 4.9, z);
-		const light = new THREE.PointLight(0xffc98a, 14, 16, 1.5);
-		light.position.set(x, 4.6, z);
-		out.push(lamp, light);
-	}
-	return out;
 }

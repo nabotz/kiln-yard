@@ -1,12 +1,14 @@
 // Set dressing that tells a player where they are and makes the works look lived in: painted
-// signs on the walls, lane names painted on the floor, corrugated roofs over the two passages and
-// water tanks and vents on the building roofs. None of it touches the simulation.
+// signs on the walls, lane names painted on the floor, roofs over the two passages, tanks and
+// vents on the building roofs, work lamps, and chimneys and sheds beyond the walls. None of it
+// touches the simulation.
 import * as THREE from 'three';
 import { CELL } from '../config.js';
 import { PALETTE } from '../palette.js';
 import { KINDS } from '../map/layout.js';
 import { createRng } from '../rng.js';
 import { painted, rgb } from './textures.js';
+import { createBuilder, box, toMesh } from './level.js';
 
 // Wall signs: [text, arrow, x, y, z, facing yaw] in metres.
 const SIGNS = [
@@ -55,6 +57,9 @@ const lanePaint = (text, rng) => painted(512, 128, (g) => {
 
 export function dress(scene, grid, tex) {
 	const rng = createRng(31);
+	const W = grid.width * CELL, D = grid.depth * CELL;
+	const stacks = chimneys(W, D);
+	scene.add(skyline(W, D, stacks, tex), ...lamps());
 	for (const [text, arrow, x, y, z, yaw] of SIGNS) {
 		const m = new THREE.Mesh(new THREE.PlaneGeometry(arrow ? 3 : 4, arrow ? 1.5 : 2), decal(board(text, arrow)));
 		m.position.set(x, y, z);
@@ -91,4 +96,53 @@ export function dress(scene, grid, tex) {
 			scene.add(m);
 		}
 	}
+	return { stacks: stacks.map(([x, z, h]) => ({ x, y: h, z })) };
+}
+
+// Chimneys beyond the walls [x, z, height], and the sheds around them, so the yard sits inside a
+// works and not in a void.
+const chimneys = (W, D) => [[-14, 24, 34], [W + 16, 44, 40], [36, -18, 30], [58, D + 20, 36], [W + 10, D + 14, 28]];
+
+// Sheds around the chimneys beyond the walls, so the yard sits inside a works and not in a void.
+function skyline(W, D, stacks, tex) {
+	const g = new THREE.Group();
+	const rng = createRng(11);
+	const b = createBuilder();
+	for (let i = 0; i < 16; i++) {
+		const side = i % 4;
+		const t = (Math.floor(i / 4) + 0.5) / 4;
+		const h = 8 + rng.next() * 9, len = 14 + rng.next() * 10, deep = 10 + rng.next() * 8, gap = 6 + rng.next() * 10;
+		const along = (side < 2 ? W : D) * t - len / 2;
+		const out = side % 2 === 0 ? -gap - deep : (side < 2 ? D : W) + gap;
+		if (side < 2) box(b, along, 0, out, along + len, h, out + deep, [4, 5.2]);
+		else box(b, out, 0, along, out + deep, h, along + len, [4, 5.2]);
+	}
+	const sheds = toMesh(b, new THREE.MeshStandardMaterial({ map: tex.brick, color: 0x9a8a80, roughness: 1 }));
+	sheds.castShadow = false;
+	g.add(sheds);
+	const stackMat = new THREE.MeshStandardMaterial({ map: tex.brick.clone(), roughness: 0.92 });
+	stackMat.map.repeat.set(2, 6);
+	stackMat.map.needsUpdate = true;
+	for (const [x, z, h] of stacks) {
+		const stack = new THREE.Mesh(new THREE.CylinderGeometry(1.4, 2.3, h, 18), stackMat);
+		stack.position.set(x, h / 2, z);
+		const rim = new THREE.Mesh(new THREE.CylinderGeometry(1.55, 1.55, 0.8, 18), new THREE.MeshBasicMaterial({ color: PALETTE.ember }));
+		rim.position.set(x, h, z);
+		g.add(stack, rim);
+	}
+	return g;
+}
+
+// Work lamps over the sites and mid: an emissive shade and a warm point light each.
+function lamps() {
+	const out = [];
+	const shade = new THREE.MeshBasicMaterial({ color: 0xffe2b0 });
+	for (const [x, z] of [[12, 9], [67, 9], [40, 30], [40, 56]]) {
+		const lamp = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.12, 0.35), shade);
+		lamp.position.set(x, 4.9, z);
+		const light = new THREE.PointLight(0xffc98a, 14, 16, 1.5);
+		light.position.set(x, 4.6, z);
+		out.push(lamp, light);
+	}
+	return out;
 }

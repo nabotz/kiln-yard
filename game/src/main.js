@@ -33,11 +33,11 @@ const textures = createTextures();
 const stage = createStage(document.getElementById('game'), textures, sim.grid.width * CELL, sim.grid.depth * CELL);
 const { camera } = stage;
 const level = buildLevel(stage.scene, sim.grid, textures);
-dress(stage.scene, sim.grid, textures);
+const dressing = dress(stage.scene, sim.grid, textures);
 const bodies = createSoldierViews(stage.scene, sim);
 const viewmodel = createViewmodel(stage.vmScene, textures);
 const effects = createEffects(stage.scene, textures);
-const ambience = createAmbience(stage.scene, textures, level.stacks, level.firebox);
+const ambience = createAmbience(stage.scene, textures, [...dressing.stacks, level.kilnTop], level.firebox);
 const hud = createHud();
 const radar = createRadar(document.getElementById('radar'), sim.grid);
 const audio = createAudio();
@@ -208,6 +208,14 @@ function bootPlay() {
 		});
 	}
 	document.addEventListener('mousedown', () => { if (input.locked && !me.alive) spectateIndex++; });
+	// Mouse sensitivity, remembered in this browser where storage is allowed.
+	const sens = document.getElementById('sens'), sensOut = document.getElementById('sens-out');
+	const applySens = (v) => { input.look.sens = v; sens.value = String(v); sensOut.textContent = v.toFixed(2); };
+	try { applySens(Number(localStorage.getItem('clayfield.sens')) || 1); } catch { applySens(1); }
+	sens.addEventListener('input', () => {
+		applySens(Number(sens.value));
+		try { localStorage.setItem('clayfield.sens', sens.value); } catch { /* storage blocked: keep it for this visit */ }
+	});
 	input.look.yaw = me.yaw;
 	requestAnimationFrame(frame);
 }

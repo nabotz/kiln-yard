@@ -66,7 +66,7 @@ try {
       ready = r.result?.value === true;
     }
     if (!ready) throw new Error(`${shot.name}: the game never signalled __shotReady`);
-    let quality = 88, bytes = Buffer.alloc(0);
+    let quality = 82, bytes = Buffer.alloc(0);
     do {
       const { data } = await send('Page.captureScreenshot', { format: 'jpeg', quality });
       bytes = Buffer.from(data, 'base64');
