@@ -1,6 +1,6 @@
 // The HUD: reads the simulation each frame and writes the DOM only where a value changed. The
 // crosshair gap is the weapon's true inaccuracy at that moment.
-import { MOVE } from '../config.js';
+import { MOVE, MATCH } from '../config.js';
 import { SIDE_NAME } from '../palette.js';
 import { activeWeapon } from '../sim/soldier.js';
 import { inaccuracy, NADE_NAMES, WEAPONS } from '../sim/weapons.js';
@@ -63,7 +63,8 @@ export function createHud() {
 			else if (e.type === 'planted') banner('Charge armed', `Site ${e.id}`, now, 2.2);
 			else if (e.type === 'roundEnd') {
 				const won = e.n === viewer.squad;
-				banner(won ? 'Round won' : 'Round lost', `${SIDE_NAME[sideOf(sim, e.n)]} win: ${REASONS[e.id]}.`, now, 4.5);
+				const what = sim.match.winner >= 0 ? 'Match' : 'Round';
+				banner(`${what} ${won ? 'won' : 'lost'}`, `${SIDE_NAME[sideOf(sim, e.n)]} win: ${REASONS[e.id]}.`, now, 4.5);
 			} else if (e.type === 'halftime') banner('Half-time', 'Sides swap. Money resets to $800.', now, 4);
 		},
 
@@ -71,18 +72,21 @@ export function createHud() {
 			const now = sim.time;
 			const r = sim.round;
 			for (let i = 0; i < 2; i++) {
-				const side = sideOf(sim, i);
-				set(`tn${i}`, teams[i].name, i === me.squad ? `You · ${SIDE_NAME[side]}` : SIDE_NAME[side]);
-				set(`ts${i}`, teams[i].score, String(sim.match.scores[i]));
-				set(`tc${i}`, teams[i].root, `team ${side}`, 'className');
-				let pips = '';
-				for (const s of sim.soldiers) if (s.squad === i) pips += s.alive ? '●' : '○';
-				set(`tp${i}`, teams[i].pips, pips);
+				let alive = 0;
+				for (const s of sim.soldiers) if (s.squad === i && s.alive) alive++;
+				const side = sideOf(sim, i), t = teams[i];
+				const key = sim.match.scores[i] * 100 + alive * 2 + (side === 'atk' ? 1 : 0);
+				if (t.key === key) continue;
+				t.key = key;
+				t.name.textContent = i === me.squad ? `You · ${SIDE_NAME[side]}` : SIDE_NAME[side];
+				t.score.textContent = String(sim.match.scores[i]);
+				t.root.className = `team panel ${side}`;
+				t.pips.textContent = '●'.repeat(alive) + '○'.repeat(MATCH.teamSize - alive);
 			}
 			const planted = sim.charge.state === 'planted';
 			set('timer', el.timer, clock(Math.ceil(r.timer)));
-			set('phase', el.phase, r.phase === 'freeze' ? 'Buy phase' : planted ? 'Charge armed' : r.phase === 'over' ? 'Round over' : `Round ${r.number}`);
-			toggle('armed', el.clock, 'armed', planted);
+			set('phase', el.phase, r.phase === 'freeze' ? 'Buy phase' : r.phase !== 'live' ? 'Round over' : planted ? 'Charge armed' : `Round ${r.number}`);
+			toggle('armed', el.clock, 'armed', planted && r.phase === 'live');
 
 			const w = activeWeapon(viewer);
 			set('hp', el.hp, String(Math.max(0, Math.ceil(viewer.hp))));

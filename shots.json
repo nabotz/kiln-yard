@@ -1,0 +1,6 @@
+[
+  { "name": "1-firefight.jpg", "query": "?shot=1&seed=6&t=76.1667&pov=4" },
+  { "name": "2-plant.jpg", "query": "?shot=1&seed=11&t=67.7167&pov=4" },
+  { "name": "3-buy.jpg", "query": "?shot=1&seed=12&t=144.3167&pov=2&buy" },
+  { "name": "4-match-won.jpg", "query": "?shot=1&seed=5&t=384.8&pov=6&board" }
+]

@@ -4,24 +4,20 @@ import * as THREE from 'three';
 import { PALETTE } from '../palette.js';
 import { activeWeapon } from '../sim/soldier.js';
 
+const box = (w, h, d) => new THREE.BoxGeometry(w, h, d);
 const GEO = {
-	thigh: new THREE.BoxGeometry(0.16, 0.46, 0.18),
-	shin: new THREE.BoxGeometry(0.14, 0.44, 0.16),
-	boot: new THREE.BoxGeometry(0.16, 0.1, 0.26),
-	chest: new THREE.BoxGeometry(0.44, 0.52, 0.26),
-	plate: new THREE.BoxGeometry(0.48, 0.34, 0.31),
-	head: new THREE.BoxGeometry(0.22, 0.25, 0.23),
-	helmet: new THREE.BoxGeometry(0.27, 0.12, 0.28),
-	visor: new THREE.BoxGeometry(0.2, 0.05, 0.02),
-	arm: new THREE.BoxGeometry(0.11, 0.11, 0.42),
-	gun: new THREE.BoxGeometry(0.07, 0.11, 1),
-	pack: new THREE.BoxGeometry(0.3, 0.22, 0.12),
+	thigh: box(0.17, 0.46, 0.19), shin: box(0.15, 0.44, 0.17), knee: box(0.17, 0.1, 0.06), boot: box(0.17, 0.11, 0.27),
+	belt: box(0.46, 0.09, 0.27), chest: box(0.44, 0.5, 0.25), plate: box(0.48, 0.34, 0.3), pack: box(0.34, 0.36, 0.14),
+	pad: box(0.15, 0.08, 0.18), head: box(0.21, 0.24, 0.22), helmet: box(0.27, 0.12, 0.28), visor: box(0.19, 0.05, 0.02),
+	limb: box(0.1, 0.1, 1), glove: box(0.09, 0.09, 0.1), gun: box(0.07, 0.11, 1), charge: box(0.26, 0.16, 0.08),
 };
+const Z_AXIS = new THREE.Vector3(0, 0, 1);
+const DIR = new THREE.Vector3();
 
 function sideMaterials(main, dark) {
 	const std = (color, rough = 0.85) => new THREE.MeshStandardMaterial({ color, roughness: rough });
 	return {
-		jacket: std(main), pants: std(dark), gear: std(new THREE.Color(dark).multiplyScalar(1.4).getHex(), 0.7),
+		jacket: std(main), pants: std(dark), gear: std(new THREE.Color(main).multiplyScalar(0.62).getHex(), 0.7),
 		helmet: std(new THREE.Color(main).multiplyScalar(0.55).getHex(), 0.6),
 		visor: new THREE.MeshBasicMaterial({ color: new THREE.Color(main).multiplyScalar(1.3) }),
 	};
@@ -29,67 +25,76 @@ function sideMaterials(main, dark) {
 
 const SHARED = {
 	skin: new THREE.MeshStandardMaterial({ color: PALETTE.skin, roughness: 0.8 }),
+	glove: new THREE.MeshStandardMaterial({ color: PALETTE.soot, roughness: 0.9 }),
 	gun: new THREE.MeshStandardMaterial({ color: PALETTE.gunmetal, roughness: 0.45, metalness: 0.6 }),
 	charge: new THREE.MeshStandardMaterial({ color: PALETTE.soot, emissive: PALETTE.ember, emissiveIntensity: 0.6 }),
 };
 
-function part(geo, material, x, y, z, parent) {
-	const m = new THREE.Mesh(geo, material);
-	m.position.set(x, y, z);
-	m.castShadow = true;
-	parent.add(m);
-	return m;
-}
-
-function leg(x, mats, parent) {
-	const hip = new THREE.Group();
-	hip.position.x = x;
-	parent.add(hip);
-	const thigh = part(GEO.thigh, mats.pants, 0, -0.23, 0, hip);
-	const knee = new THREE.Group();
-	knee.position.y = -0.46;
-	hip.add(knee);
-	const shin = part(GEO.shin, mats.pants, 0, -0.22, 0, knee);
-	const boot = part(GEO.boot, mats.gear, 0, -0.44, -0.04, knee);
-	return { hip, knee, meshes: [thigh, shin, boot] };
-}
-
+// One figure, facing -z with its feet at the origin. `tint` lists every mesh painted in a side
+// colour, so a half-time side swap only swaps materials.
 function buildFigure(soldier, mats) {
 	const m = mats[soldier.side];
+	const tint = [];
+	const part = (geo, key, x, y, z, parent) => {
+		const mesh = new THREE.Mesh(geo, m[key] ?? SHARED[key]);
+		mesh.position.set(x, y, z);
+		mesh.castShadow = true;
+		parent.add(mesh);
+		if (m[key]) tint.push([mesh, key]);
+		return mesh;
+	};
+	// A limb as a box stretched between two points of its parent's space.
+	const limb = (a, b, parent) => {
+		const mesh = part(GEO.limb, 'jacket', (a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2, parent);
+		DIR.set(b[0] - a[0], b[1] - a[1], b[2] - a[2]);
+		mesh.scale.z = DIR.length();
+		mesh.quaternion.setFromUnitVectors(Z_AXIS, DIR.normalize());
+	};
+	const joint = (parent, x, y) => {
+		const g = new THREE.Group();
+		g.position.set(x, y, 0);
+		parent.add(g);
+		return g;
+	};
 	const root = new THREE.Group();
 	root.rotation.order = 'YXZ';
-	const hips = new THREE.Group();
-	hips.position.y = 0.92;
-	root.add(hips);
-	const legL = leg(-0.12, m, hips), legR = leg(0.12, m, hips);
-	const torso = new THREE.Group();
-	hips.add(torso);
-	const chest = part(GEO.chest, m.jacket, 0, 0.27, 0, torso);
-	const plate = part(GEO.plate, m.gear, 0, 0.32, 0, torso);
-	const pack = part(GEO.pack, SHARED.charge, 0, 0.32, 0.2, torso);
-	const neck = new THREE.Group();
-	neck.position.y = 0.62;
-	torso.add(neck);
-	part(GEO.head, SHARED.skin, 0, 0.02, 0, neck);
-	const helmet = part(GEO.helmet, m.helmet, 0, 0.14, 0, neck);
-	const visor = part(GEO.visor, m.visor, 0, 0.05, -0.12, neck);
-	const arms = new THREE.Group();
-	arms.position.y = 0.46;
-	torso.add(arms);
-	const armL = part(GEO.arm, m.jacket, -0.17, -0.06, -0.2, arms);
-	const armR = part(GEO.arm, m.jacket, 0.17, -0.06, -0.2, arms);
-	armL.rotation.y = 0.35; armR.rotation.y = -0.2;
-	const gun = part(GEO.gun, SHARED.gun, 0.05, -0.04, -0.45, arms);
-	return {
-		soldier, root, hips, torso, neck, arms, gun, plate, helmet, pack, legL, legR,
-		side: soldier.side, phase: 0,
-		tinted: { jacket: [chest, armL, armR], pants: [...legL.meshes.slice(0, 2), ...legR.meshes.slice(0, 2)], gear: [plate, legL.meshes[2], legR.meshes[2]], helmet: [helmet], visor: [visor] },
+	const hips = joint(root, 0, 0.92);
+	const leg = (x) => {
+		const hip = joint(hips, x, 0);
+		part(GEO.thigh, 'pants', 0, -0.23, 0, hip);
+		const knee = joint(hip, 0, -0.46);
+		part(GEO.knee, 'gear', 0, 0, -0.1, knee);
+		part(GEO.shin, 'pants', 0, -0.22, 0, knee);
+		part(GEO.boot, 'gear', 0, -0.44, -0.04, knee);
+		return { hip, knee };
 	};
+	const legL = leg(-0.12), legR = leg(0.12);
+	const torso = joint(hips, 0, 0);
+	part(GEO.belt, 'gear', 0, 0.03, 0, torso);
+	part(GEO.chest, 'jacket', 0, 0.29, 0, torso);
+	const plate = part(GEO.plate, 'gear', 0, 0.33, 0, torso);
+	part(GEO.pack, 'gear', 0, 0.3, 0.19, torso);
+	const charge = part(GEO.charge, 'charge', 0, 0.33, 0.29, torso);
+	for (const x of [-0.25, 0.25]) part(GEO.pad, 'gear', x, 0.5, 0, torso);
+	const neck = joint(torso, 0, 0.62);
+	part(GEO.head, 'skin', 0, 0.02, 0, neck);
+	const helmet = part(GEO.helmet, 'helmet', 0, 0.14, 0, neck);
+	part(GEO.visor, 'visor', 0, 0.05, -0.115, neck);
+	// Rifle at the ready: right hand on the grip, left hand under the fore-end.
+	const arms = joint(torso, 0, 0.46);
+	limb([0.25, 0, 0.02], [0.21, -0.2, -0.1], arms);
+	limb([0.21, -0.2, -0.1], [0.07, -0.1, -0.3], arms);
+	limb([-0.25, 0, 0.02], [-0.2, -0.2, -0.16], arms);
+	limb([-0.2, -0.2, -0.16], [0.02, -0.09, -0.52], arms);
+	part(GEO.glove, 'glove', 0.07, -0.1, -0.32, arms);
+	part(GEO.glove, 'glove', 0.02, -0.08, -0.54, arms);
+	const gun = part(GEO.gun, 'gun', 0.05, -0.04, -0.45, arms);
+	return { soldier, root, hips, torso, neck, arms, gun, plate, helmet, charge, legL, legR, side: soldier.side, phase: 0, tint };
 }
 
 function retint(view, mats) {
 	const m = mats[view.soldier.side];
-	for (const key of Object.keys(view.tinted)) for (const mesh of view.tinted[key]) mesh.material = m[key];
+	for (const [mesh, key] of view.tint) mesh.material = m[key];
 	view.side = view.soldier.side;
 }
 
@@ -126,7 +131,7 @@ export function createSoldierViews(scene, sim) {
 		v.gun.visible = s.alive;
 		v.plate.visible = s.armor > 0;
 		v.helmet.visible = s.helmet;
-		v.pack.visible = s.hasCharge;
+		v.charge.visible = s.hasCharge;
 		const w = activeWeapon(s);
 		const length = !w ? 0.15 : w.def.slot === 'primary' ? 0.78 : 0.26;
 		v.gun.scale.z = length;

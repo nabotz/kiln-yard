@@ -13,21 +13,23 @@ const DEFENCE_SETUPS = [
 ];
 
 const world = (p) => ({ x: p[0] * CELL, z: p[1] * CELL });
+const CENTERS = { A: world(SITES.A.center), B: world(SITES.B.center) };
 
-export function createTactics() {
-	return [0, 1].map(() => ({ plan: null, executed: false, rushed: false, planted: false, pressure: '', defuser: null }));
+// Per squad: its bots (fixed for the match), the living ones (refilled each step) and the plan.
+export function createTactics(soldiers) {
+	return [0, 1].map((squad) => ({
+		roster: soldiers.filter((s) => s.squad === squad && s.brain !== null), alive: [],
+		plan: null, executed: false, rushed: false, planted: false, pressure: '', defuser: null,
+	}));
 }
-
-const botsOf = (sim, squad) => sim.soldiers.filter((s) => s.squad === squad && s.brain !== null);
 
 export function roundStart(sim) {
 	for (let squad = 0; squad < 2; squad++) {
 		const st = sim.tactics[squad];
 		st.executed = false; st.rushed = false; st.planted = false; st.pressure = ''; st.defuser = null;
-		const bots = botsOf(sim, squad);
-		teamBuy(sim, squad, bots);
-		if (sideOf(sim, squad) === 'atk') planAttack(sim, st, bots);
-		else planDefence(sim, bots);
+		teamBuy(sim, squad, st.roster);
+		if (sideOf(sim, squad) === 'atk') planAttack(sim, st, st.roster);
+		else planDefence(sim, st.roster);
 	}
 }
 
@@ -99,10 +101,11 @@ export function updateTactics(sim) {
 	if (sim.round.phase !== 'live') return;
 	for (let squad = 0; squad < 2; squad++) {
 		const st = sim.tactics[squad];
-		const bots = botsOf(sim, squad).filter((b) => b.alive);
-		if (bots.length === 0) continue;
-		if (sideOf(sim, squad) === 'atk') attack(sim, st, bots);
-		else defend(sim, st, bots);
+		st.alive.length = 0;
+		for (const b of st.roster) if (b.alive) st.alive.push(b);
+		if (st.alive.length === 0) continue;
+		if (sideOf(sim, squad) === 'atk') attack(sim, st, st.alive);
+		else defend(sim, st, st.alive);
 	}
 }
 
@@ -124,8 +127,11 @@ function attack(sim, st, bots) {
 		const fetcher = nearest(bots, charge.x, charge.z);
 		if (fetcher.brain.task?.kind !== 'fetch') setTask(fetcher, 'fetch', [{ x: charge.x, z: charge.z }], charge.x, charge.z);
 	} else if (st.executed && charge.carrier?.brain && charge.carrier.brain.task?.kind !== 'plant') plantTask(charge.carrier, SITES[st.plan.site]);
-	const contact = bots.some((b) => sim.time - b.brain.lastContact < 1.5);
-	const ready = bots.every((b) => b.brain.arrived || b.brain.task?.kind !== 'route');
+	let contact = false, ready = true;
+	for (const b of bots) {
+		if (sim.time - b.brain.lastContact < 1.5) contact = true;
+		if (!b.brain.arrived && b.brain.task?.kind === 'route') ready = false;
+	}
 	if (!st.executed && (ready || sim.round.elapsed > 32 || (contact && sim.round.elapsed > 14))) execute(sim, st, bots);
 	if (!st.rushed && sim.round.timer < 22) {
 		st.rushed = true;
@@ -181,7 +187,7 @@ function defend(sim, st, bots) {
 		}
 		// One defender goes for the charge once the site looks clear, or when time is short.
 		const threat = intelNear(sim, bots[0].squad, charge.x, charge.z, 14, 2.5);
-		const urgent = sim.round.timer < (bots.some((b) => b.kit) ? 9 : 12);
+		const urgent = sim.round.timer < 11;
 		if ((!st.defuser || !st.defuser.alive) && (!threat || urgent)) {
 			st.defuser = bots.find((b) => b.kit && Math.hypot(b.pos.x - charge.x, b.pos.z - charge.z) < 25) ?? nearest(bots, charge.x, charge.z);
 			setTask(st.defuser, 'defuse', [{ x: charge.x + 0.4, z: charge.z + 0.4 }], charge.x, charge.z);
@@ -191,7 +197,7 @@ function defend(sim, st, bots) {
 	// Rotate everyone to a site the team has seen two or more attackers on.
 	for (const key of ['A', 'B']) {
 		if (st.pressure === key) continue;
-		const c = world(SITES[key].center);
+		const c = CENTERS[key];
 		let seen = 0;
 		for (const m of sim.intel[bots[0].squad]) if (sim.time - m.time < 3 && Math.hypot(m.x - c.x, m.z - c.z) < 18) seen++;
 		if (seen >= 2) {

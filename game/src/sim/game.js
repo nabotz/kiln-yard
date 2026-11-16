@@ -42,7 +42,7 @@ export function createSim({ seed = 1, skill = 'normal', autopilot = false } = {}
 		pickups: Array.from({ length: 12 }, () => ({ weapon: null, x: 0, y: 0, z: 0, yaw: 0 })),
 		charge: createCharge(),
 		intel: createIntel(soldiers.length),
-		tactics: createTactics(),
+		tactics: createTactics(soldiers),
 		...createRoundState(),
 	};
 	beginRound(sim);

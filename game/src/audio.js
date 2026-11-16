@@ -84,7 +84,6 @@ export function createAudio() {
 
 	return {
 		start,
-		get running() { return ctx !== null && ctx.state === 'running'; },
 
 		listen(camera, who) {
 			viewer = who;

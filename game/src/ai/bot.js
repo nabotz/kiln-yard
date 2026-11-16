@@ -7,8 +7,8 @@ import { maxSpeed } from '../sim/movement.js';
 import { perceive, angleDiff } from './perception.js';
 
 const SKILLS = {
-	easy: { reaction: 0.6, turn: 4.5, settle: 2.2, spray: 0.17, headChance: 0.15, discipline: 0.4 },
-	normal: { reaction: 0.4, turn: 7, settle: 3.2, spray: 0.11, headChance: 0.28, discipline: 0.65 },
+	easy: { reaction: 0.65, turn: 4, settle: 1.9, spray: 0.2, headChance: 0.12, discipline: 0.35 },
+	normal: { reaction: 0.45, turn: 6, settle: 2.7, spray: 0.14, headChance: 0.22, discipline: 0.55 },
 	hard: { reaction: 0.26, turn: 10, settle: 4.8, spray: 0.07, headChance: 0.42, discipline: 0.85 },
 };
 

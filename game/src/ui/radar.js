@@ -34,6 +34,7 @@ export function createRadar(canvas, grid) {
 	}
 
 	const px = (x) => ox + (x / CELL) * scale, pz = (z) => oy + (z / CELL) * scale;
+	const SIDE_DOT = { atk: css(PALETTE.attack), def: css(PALETTE.defend) };
 	let next = 0;
 
 	function dot(x, z, color, r) {
@@ -55,7 +56,7 @@ export function createRadar(canvas, grid) {
 			const intel = sim.intel[viewer.squad];
 			for (const s of sim.soldiers) {
 				if (!s.alive || s === viewer) continue;
-				if (s.squad === viewer.squad) dot(s.pos.x, s.pos.z, css(s.side === 'atk' ? PALETTE.attack : PALETTE.defend), 3);
+				if (s.squad === viewer.squad) dot(s.pos.x, s.pos.z, SIDE_DOT[s.side], 3);
 				else if (sim.time - intel[s.id].time < 0.8) dot(s.pos.x, s.pos.z, '#ff3b30', 3);
 			}
 			if (!viewer.alive) return;
