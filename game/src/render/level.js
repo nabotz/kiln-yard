@@ -1,6 +1,6 @@
-// The map's look, built from the grid the physics uses: merged brick faces (only those facing
-// open floor), merged crates and barriers, the kiln, site markings, signs and a skyline beyond
-// the walls. One draw call per material.
+// The map's look, built from the grid the physics uses: merged brick walls and building facades
+// (only faces that rise above a neighbour), merged crates and barriers, the floors, the kiln, the
+// site markings and a skyline beyond the walls. One draw call per material.
 import * as THREE from 'three';
 import { CELL } from '../config.js';
 import { PALETTE } from '../palette.js';
@@ -113,15 +113,8 @@ export function buildLevel(scene, grid, tex) {
 	const kiln = buildKiln(grid, mat.wall);
 	scene.add(kiln.group);
 	for (const [zone, map] of [['A', tex.zoneA], ['B', tex.zoneB]]) scene.add(zoneMarking(grid, zone, map));
-	for (const s of SIGNS) scene.add(wallSign(tex, s));
 	const stacks = chimneys(W, D);
-	scene.add(skyline(W, D, stacks, mat.shed, mat.wall), rooftops(grid, mat), ...lamps());
-	for (const [x0, x1, z0, z1] of ROOFS) {
-		const roof = new THREE.Mesh(new THREE.BoxGeometry(x1 - x0, 0.1, z1 - z0), mat.crateTall);
-		roof.position.set((x0 + x1) / 2, 4.6, (z0 + z1) / 2);
-		roof.castShadow = true;
-		scene.add(roof);
-	}
+	scene.add(skyline(W, D, stacks, mat.shed, mat.wall), ...lamps());
 	const k = kiln.group.position;
 
 	return {
@@ -180,55 +173,9 @@ function zoneMarking(grid, zone, map) {
 	return m;
 }
 
-// Stencilled signs: [text, arrow, x, y, z, facing yaw] in metres.
-const SIGNS = [
-	['A', true, 13.98, 2.8, 23, -Math.PI / 2],
-	['B', true, 66.02, 2.8, 22, Math.PI / 2],
-	['KILN  A', false, 30, 3.4, 14.02, 0],
-	['DOCK  B', false, 50, 3.4, 12.02, 0],
-	['MID', false, 40, 3.2, 47.98, Math.PI],
-	['WATCH', false, 40, 3.6, 0.02, 0],
-];
-
-function wallSign(tex, [text, arrow, x, y, z, yaw]) {
-	const m = new THREE.Mesh(
-		new THREE.PlaneGeometry(arrow ? 3 : 4, arrow ? 1.5 : 2),
-		new THREE.MeshStandardMaterial({ map: tex.sign(text, arrow), transparent: true, depthWrite: false, roughness: 1, polygonOffset: true, polygonOffsetFactor: -2 }),
-	);
-	m.position.set(x, y, z);
-	m.rotation.y = yaw;
-	return m;
-}
-
 // Chimneys beyond the walls [x, z, height], and the sheds around them, so the yard sits inside a
 // works and not in a void.
 const chimneys = (W, D) => [[-14, 24, 34], [W + 16, 44, 40], [36, -18, 30], [58, D + 20, 36], [W + 10, D + 14, 28]];
-
-// Corrugated roofs over the Kiln Passage and the Catwalk [x0, x1, z0, z1], resting on their walls.
-const ROOFS = [[24, 36, 13.9, 18.1], [44, 56, 11.9, 16.1]];
-
-// Water tanks and vent housings on the roofs of the buildings, where a core cell is surrounded by
-// building on every side.
-function rooftops(grid, mat) {
-	const g = new THREE.Group();
-	const rng = createRng(23);
-	const tank = new THREE.CylinderGeometry(0.85, 0.85, 1.7, 14), stand = new THREE.BoxGeometry(1.5, 0.9, 1.5), vent = new THREE.BoxGeometry(1.4, 0.8, 1.1);
-	for (const c of grid.cells) {
-		if (c.top <= KINDS['#'].top || !rng.chance(0.16)) continue;
-		let deep = true;
-		for (let dz = -1; dz <= 1; dz++) for (let dx = -1; dx <= 1; dx++) if ((grid.at(c.x + dx, c.z + dz)?.top ?? 0) < c.top) deep = false;
-		if (!deep) continue;
-		const x = (c.x + 0.5) * CELL, z = (c.z + 0.5) * CELL;
-		const parts = rng.chance(0.5) ? [[stand, mat.barrier, 0.45], [tank, mat.crateTall, 1.75]] : [[vent, mat.barrier, 0.4]];
-		for (const [geo, material, y] of parts) {
-			const m = new THREE.Mesh(geo, material);
-			m.position.set(x, c.top + y, z);
-			m.castShadow = true;
-			g.add(m);
-		}
-	}
-	return g;
-}
 
 // Sheds around the chimneys beyond the walls, so the yard sits inside a works and not in a void.
 function skyline(W, D, stacks, shedMat, brick) {

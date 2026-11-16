@@ -19,6 +19,7 @@ import { createBuyMenu } from './ui/buymenu.js';
 import { createRadar } from './ui/radar.js';
 import { createAudio } from './audio.js';
 import { createAmbience } from './render/ambience.js';
+import { dress } from './render/dressing.js';
 
 const params = new URLSearchParams(window.location.search);
 const shot = params.has('shot')
@@ -32,6 +33,7 @@ const textures = createTextures();
 const stage = createStage(document.getElementById('game'), textures, sim.grid.width * CELL, sim.grid.depth * CELL);
 const { camera } = stage;
 const level = buildLevel(stage.scene, sim.grid, textures);
+dress(stage.scene, sim.grid, textures);
 const bodies = createSoldierViews(stage.scene, sim);
 const viewmodel = createViewmodel(stage.vmScene, textures);
 const effects = createEffects(stage.scene, textures);

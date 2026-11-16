@@ -4,7 +4,7 @@ import * as THREE from 'three';
 import { PALETTE } from '../palette.js';
 import { createRng } from '../rng.js';
 
-const rgb = (n, k = 1) => {
+export const rgb = (n, k = 1) => {
 	const r = Math.min(255, ((n >> 16) & 255) * k), g = Math.min(255, ((n >> 8) & 255) * k), b = Math.min(255, (n & 255) * k);
 	return `rgb(${r | 0},${g | 0},${b | 0})`;
 };
@@ -21,6 +21,13 @@ function texture(canvas, srgb = true) {
 	t.anisotropy = 8;
 	if (srgb) t.colorSpace = THREE.SRGBColorSpace;
 	return t;
+}
+
+// A texture painted by `draw` on a fresh w x h canvas (signs and floor paint use this too).
+export function painted(w, h, draw) {
+	const [c, g] = surface(w, h);
+	draw(g);
+	return texture(c);
 }
 
 function grain(g, w, h, rng, alpha, count) {
@@ -218,26 +225,25 @@ function zoneMark(letter) {
 	return texture(c);
 }
 
-// A painted board for the walls: a dark panel with a hazard edge, the text and an optional arrow.
-function sign(text, arrow) {
-	const [c, g] = surface(512, 256);
-	g.fillStyle = rgb(PALETTE.soot, 0.9);
-	g.fillRect(8, 8, 496, 240);
-	g.strokeStyle = rgb(PALETTE.hazard);
-	g.lineWidth = 10;
-	g.strokeRect(14, 14, 484, 228);
-	g.fillStyle = rgb(PALETTE.sandstone, 1.05);
-	g.font = `900 ${text.length === 1 ? 190 : 84}px Impact, "Arial Black", sans-serif`;
-	g.textAlign = 'center'; g.textBaseline = 'middle';
-	g.fillText(text, arrow ? 190 : 256, 134);
-	if (arrow) {
+// A six-pointed muzzle flash: hot core, tapering spikes.
+const flare = () => painted(128, 128, (g) => {
+	g.translate(64, 64);
+	for (let i = 0; i < 6; i++) {
+		g.rotate(Math.PI / 3);
+		const spike = g.createLinearGradient(0, 0, 62, 0);
+		spike.addColorStop(0, 'rgba(255,244,214,1)');
+		spike.addColorStop(1, 'rgba(255,150,60,0)');
+		g.fillStyle = spike;
 		g.beginPath();
-		g.moveTo(330, 90); g.lineTo(430, 128); g.lineTo(330, 166);
-		g.lineWidth = 26; g.strokeStyle = rgb(PALETTE.sandstone, 1.05);
-		g.stroke();
+		g.moveTo(0, -8); g.lineTo(62, 0); g.lineTo(0, 8);
+		g.fill();
 	}
-	return texture(c);
-}
+	const core = g.createRadialGradient(0, 0, 0, 0, 0, 30);
+	core.addColorStop(0, 'rgba(255,255,240,1)');
+	core.addColorStop(1, 'rgba(255,170,80,0)');
+	g.fillStyle = core;
+	g.fillRect(-64, -64, 128, 128);
+});
 
 function sprite(inner, outer) {
 	const [c, g] = surface(128, 128);
@@ -285,7 +291,7 @@ export function createTextures() {
 		slabs: slabs(rng),
 		zoneA: zoneMark('A'),
 		zoneB: zoneMark('B'),
-		sign,
+		flare: flare(),
 		smoke: sprite('rgba(235,228,218,0.95)', 'rgba(215,205,195,0.55)'),
 		dust: sprite('rgba(200,170,140,0.8)', 'rgba(180,150,120,0.3)'),
 		glow: sprite('rgba(255,220,170,1)', 'rgba(255,140,60,0.4)'),

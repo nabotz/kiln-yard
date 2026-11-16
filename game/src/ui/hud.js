@@ -15,7 +15,7 @@ export function createHud() {
 	const el = {};
 	for (const id of ['callout', 'money', 'timer', 'phase', 'feed', 'crosshair', 'hitmarker', 'hp', 'armor', 'weapon-name', 'mag', 'reserve',
 		'action', 'action-label', 'action-fill', 'hint', 'banner', 'banner-title', 'banner-sub', 'spectate', 'damage', 'flashbang', 'scope',
-		'board', 'board-body', 'clock', 'radio', 'slots', 'hp-bar', 'armor-bar']) el[id] = $(id);
+		'board', 'board-body', 'clock', 'radio', 'slots', 'hp-bar', 'armor-bar', 'hitdir']) el[id] = $(id);
 	const teams = [0, 1].map((i) => ({ root: $(`team${i}`), name: $(`team${i}`).querySelector('.name'), score: $(`team${i}`).querySelector('.score'), pips: $(`team${i}`).querySelector('.pips') }));
 	const cache = new Map();
 	const set = (key, node, value, prop = 'textContent') => {
@@ -31,7 +31,7 @@ export function createHud() {
 
 	const feed = [], calls = [];
 	const slots = { primary: null, secondary: null, slot: '', nades: -1 };
-	let bannerUntil = 0, hitUntil = 0, hurt = 0, boardAt = 0;
+	let bannerUntil = 0, hitUntil = 0, hurt = 0, boardAt = 0, shotAt = -9, shotFrom = 0;
 
 	function banner(title, sub, now, seconds) {
 		el['banner-title'].textContent = title;
@@ -67,6 +67,10 @@ export function createHud() {
 			else if (e.type === 'hit') {
 				if (e.o === viewer && e.s !== viewer) { hitUntil = now + 0.12; toggle('headhit', el.hitmarker, 'head', e.id === 'head'); }
 				if (e.s === viewer) hurt = Math.min(1, hurt + e.n / 60);
+				if (e.s === viewer && e.o !== viewer) {
+					shotAt = now;
+					shotFrom = Math.atan2(-(e.o.pos.x - viewer.pos.x), -(e.o.pos.z - viewer.pos.z));
+				}
 			} else if (e.type === 'roundStart') {
 				const side = sideOf(sim, viewer.squad);
 				banner(`Round ${e.n}`, side === 'atk' ? `You attack with ${SIDE_NAME.atk}: plant the charge on A or B.` : `You defend with ${SIDE_NAME.def}: hold both sites.`, now, 3.5);
@@ -152,6 +156,10 @@ export function createHud() {
 			set('hurt', el.damage.style, hurt.toFixed(2), 'opacity');
 			set('blind', el.flashbang.style, Math.min(1, viewer.flash / 1.6).toFixed(2), 'opacity');
 			toggle('scope', el.scope, 'on', viewer.scoped && viewer.alive);
+			// Where the last hit came from: an arc round the crosshair, turned toward the shooter.
+			const since = viewer === me ? now - shotAt : 9;
+			set('hitdirA', el.hitdir.style, since < 1.2 ? (1 - since / 1.2).toFixed(2) : '0', 'opacity');
+			if (since < 1.2) set('hitdirR', el.hitdir.style, `rotate(${((viewer.yaw - shotFrom) * 180 / Math.PI).toFixed(0)}deg)`, 'transform');
 			toggle('banner', el.banner, 'on', now < bannerUntil);
 			expire(feed, now);
 			expire(calls, now);

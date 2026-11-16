@@ -34,7 +34,7 @@ export function createEffects(scene, tex) {
 		born: 0, life: 0, size: 0, rise: 0,
 	}));
 
-	const flashes = pool(12, () => ({ sprite: hidden(new THREE.Sprite(additive(0xffd090, tex.glow))), until: 0 }));
+	const flashes = pool(12, () => ({ sprite: hidden(new THREE.Sprite(additive(0xffd090, tex.flare))), until: 0 }));
 	const flashLight = added(new THREE.PointLight(0xffb060, 0, 7, 2));
 	let lightUntil = 0;
 
@@ -43,6 +43,22 @@ export function createEffects(scene, tex) {
 		light: added(new THREE.PointLight(0xff9040, 0, 22, 1.6)),
 		born: 0, size: 0, life: 0,
 	}));
+
+	// Spent brass, thrown out to the right of the gun. Its arc is a function of its age, so a frozen
+	// screenshot frame shows the same casings in the same places.
+	const brass = new THREE.MeshStandardMaterial({ color: 0xc8963c, metalness: 0.8, roughness: 0.35 });
+	const casingGeo = new THREE.BoxGeometry(0.012, 0.012, 0.034);
+	let casingCount = 0;
+	const casings = pool(48, () => ({ mesh: hidden(new THREE.Mesh(casingGeo, brass)), born: 0, x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, land: 0 }));
+	function eject(e, now) {
+		const c = casings.take(), k = (casingCount++ * 0.618) % 1;
+		const sin = Math.sin(e.s.yaw), cos = Math.cos(e.s.yaw), out = 1.5 + k * 0.8;
+		c.x = e.x - sin * 0.35 + cos * 0.12; c.y = e.y - 0.18; c.z = e.z - cos * 0.35 - sin * 0.12;
+		c.vx = cos * out + sin * 0.3; c.vy = 1.7 + k * 0.6; c.vz = -sin * out + cos * 0.3;
+		c.land = (c.vy + Math.sqrt(c.vy * c.vy + 19.6 * (c.y - 0.01))) / 9.8;
+		c.born = now;
+		c.mesh.visible = true;
+	}
 
 	const nadeGeo = new THREE.SphereGeometry(0.05, 10, 8);
 	const nadeMat = new THREE.MeshStandardMaterial({ color: 0x55604a, roughness: 0.6 });
@@ -136,6 +152,7 @@ export function createEffects(scene, tex) {
 					e.x - Math.sin(e.s.yaw) * 0.75, e.y - 0.22, e.z - Math.cos(e.s.yaw) * 0.75);
 				muzzleFlash(from.x, from.y, from.z, now, e.s === viewer && viewer.alive);
 				tracer(from, tmpB.set(e.x2, e.y2, e.z2), now);
+				eject(e, now);
 			} else if (e.type === 'impact') {
 				const h = holes.take();
 				tmpN.set(e.x2, e.y2, e.z2);
@@ -159,6 +176,13 @@ export function createEffects(scene, tex) {
 			const now = sim.time;
 			clock = now;
 			for (const t of tracers.items) if (t.mesh.visible && now > t.until) t.mesh.visible = false;
+			for (const c of casings.items) {
+				if (!c.mesh.visible) continue;
+				const age = now - c.born, t = Math.min(age, c.land);
+				if (age > 3) { c.mesh.visible = false; continue; }
+				c.mesh.position.set(c.x + c.vx * t, Math.max(0.01, c.y + c.vy * t - 4.9 * t * t), c.z + c.vz * t);
+				c.mesh.rotation.set(t * 17, t * 11, 0);
+			}
 			for (const f of flashes.items) if (f.sprite.visible && now > f.until) f.sprite.visible = false;
 			if (now > lightUntil) flashLight.intensity = 0;
 			for (const p of puffs.items) {

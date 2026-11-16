@@ -113,7 +113,7 @@ export function createViewmodel(vmScene, tex) {
 		models['nade:' + type] = { group: body, holder, mag: null, magY: 0, muzzle: body, hold: [0.14, -0.14, -0.3] };
 	}
 
-	const flash = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex.glow, color: 0xffd9a0, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true }));
+	const flash = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex.flare, color: 0xffd9a0, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true }));
 	flash.scale.setScalar(0.5);
 	flash.visible = false;
 
