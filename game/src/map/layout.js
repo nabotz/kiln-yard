@@ -41,7 +41,7 @@ export const ROWS = [
 
 // Solid cell kinds: height of the box (m), inset from the cell edge (m) and what it is made of.
 export const KINDS = {
-	'#': { top: 5.2, inset: 0, mat: 'wall' },
+	'#': { top: 5.2, inset: 0, mat: 'wall', core: 8.4 }, // a wall cell with no open cell around it rises as a building
 	'C': { top: 2.3, inset: 0.12, mat: 'crateTall' },
 	'c': { top: 1.1, inset: 0.2, mat: 'crate' },
 	'=': { top: 0.95, inset: 0.3, mat: 'barrier' },
@@ -59,6 +59,10 @@ export const POINTS = {
 };
 
 // Callout regions for the HUD's location line: [name, x0, z0, x1, z1] in cells, first match wins.
+// Concrete-floored rectangles [x0, z0, x1, z1] in cells: both sites, the office, mid and its
+// courtyard. The lanes and the clay yard keep their clay paving.
+export const PAVED = [[1, 1, 12, 11], [28, 1, 39, 10], [12, 1, 28, 4], [18, 4, 22, 25], [15, 13, 25, 17]];
+
 export const CALLOUTS = [
 	['Kiln Hall (A)', 1, 1, 12, 11], ['Loading Dock (B)', 28, 1, 39, 10], ['Watch Office', 12, 1, 28, 4],
 	['Kiln Passage', 12, 7, 18, 9], ['Catwalk', 22, 6, 28, 8], ['Mid', 18, 4, 22, 25], ['Courtyard', 15, 13, 25, 17],

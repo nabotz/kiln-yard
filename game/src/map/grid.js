@@ -29,6 +29,13 @@ export function createGrid() {
 	}
 
 	const at = (cx, cz) => (cx < 0 || cz < 0 || cx >= width || cz >= depth ? null : cells[cz * width + cx]);
+	const open = (cx, cz) => at(cx, cz) !== null && at(cx, cz).ch !== '#';
+	for (const c of cells) {
+		if (c.ch !== '#') continue;
+		let exposed = false;
+		for (let dz = -1; dz <= 1; dz++) for (let dx = -1; dx <= 1; dx++) if (open(c.x + dx, c.z + dz)) exposed = true;
+		if (!exposed) c.top = KINDS['#'].core;
+	}
 	const atWorld = (wx, wz) => at(Math.floor(wx / CELL), Math.floor(wz / CELL));
 	const walkable = (cx, cz) => {
 		const c = at(cx, cz);
@@ -58,35 +65,25 @@ export function createGrid() {
 		return outside;
 	}
 
-	// Ray against one cell's box (slab test). Returns the entry distance or Infinity; sets the normal.
+	// Ray against one cell's box (slab test): narrow the ray's [min, max] span by one axis at a
+	// time, remembering which axis it entered through for the surface normal.
+	const span = { min: 0, max: 0, axis: -1, sign: 0 };
+	function clip(o, d, lo, hi, axis) {
+		if (d === 0) return o >= lo && o <= hi;
+		let t1 = (lo - o) / d, t2 = (hi - o) / d, s = -1;
+		if (t1 > t2) { const k = t1; t1 = t2; t2 = k; s = 1; }
+		if (t1 > span.min) { span.min = t1; span.axis = axis; span.sign = s; }
+		if (t2 < span.max) span.max = t2;
+		return true;
+	}
 	function slab(c, ox, oy, oz, dx, dy, dz, hit) {
-		let tmin = 0, tmax = Infinity, axis = -1, sign = 0;
-		// x
-		if (dx !== 0) {
-			let t1 = (c.minX - ox) / dx, t2 = (c.maxX - ox) / dx, s = -1;
-			if (t1 > t2) { const k = t1; t1 = t2; t2 = k; s = 1; }
-			if (t1 > tmin) { tmin = t1; axis = 0; sign = s; }
-			if (t2 < tmax) tmax = t2;
-		} else if (ox < c.minX || ox > c.maxX) return Infinity;
-		// y
-		if (dy !== 0) {
-			let t1 = -oy / dy, t2 = (c.top - oy) / dy, s = -1;
-			if (t1 > t2) { const k = t1; t1 = t2; t2 = k; s = 1; }
-			if (t1 > tmin) { tmin = t1; axis = 1; sign = s; }
-			if (t2 < tmax) tmax = t2;
-		} else if (oy < 0 || oy > c.top) return Infinity;
-		// z
-		if (dz !== 0) {
-			let t1 = (c.minZ - oz) / dz, t2 = (c.maxZ - oz) / dz, s = -1;
-			if (t1 > t2) { const k = t1; t1 = t2; t2 = k; s = 1; }
-			if (t1 > tmin) { tmin = t1; axis = 2; sign = s; }
-			if (t2 < tmax) tmax = t2;
-		} else if (oz < c.minZ || oz > c.maxZ) return Infinity;
-		if (tmax < tmin || axis < 0) return Infinity;
-		hit.nx = axis === 0 ? sign : 0;
-		hit.ny = axis === 1 ? sign : 0;
-		hit.nz = axis === 2 ? sign : 0;
-		return tmin;
+		span.min = 0; span.max = Infinity; span.axis = -1;
+		if (!clip(ox, dx, c.minX, c.maxX, 0) || !clip(oy, dy, 0, c.top, 1) || !clip(oz, dz, c.minZ, c.maxZ, 2)) return Infinity;
+		if (span.max < span.min || span.axis < 0) return Infinity;
+		hit.nx = span.axis === 0 ? span.sign : 0;
+		hit.ny = span.axis === 1 ? span.sign : 0;
+		hit.nz = span.axis === 2 ? span.sign : 0;
+		return span.min;
 	}
 
 	// First thing a ray meets within maxDist: a box, the floor or the map's edge. Fills `hit`

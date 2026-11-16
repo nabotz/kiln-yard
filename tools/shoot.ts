@@ -80,5 +80,6 @@ try {
   browser.kill();
   server.kill();
   await sleep(500);
-  rmSync(profile, { recursive: true, force: true });
+  // Chrome can hold its profile a moment after it exits (Windows): retry, never fail the shots.
+  try { rmSync(profile, { recursive: true, force: true, maxRetries: 8, retryDelay: 250 }); } catch { /* left in tmp */ }
 }

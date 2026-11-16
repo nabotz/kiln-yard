@@ -131,6 +131,30 @@ function steel(rng) {
 	return texture(c);
 }
 
+// 4 m of poured floor: 2 m slabs with saw-cut joints, oil stains and scuffs.
+function slabs(rng) {
+	const [c, g] = surface(512, 512);
+	for (let i = 0; i < 4; i++) {
+		g.fillStyle = rgb(PALETTE.concrete, 0.78 + rng.next() * 0.12);
+		g.fillRect((i % 2) * 256, (i >> 1) * 256, 256, 256);
+	}
+	grain(g, 512, 512, rng, 0.35, 9000);
+	for (let i = 0; i < 6; i++) {
+		const stain = g.createRadialGradient(0, 0, 0, 0, 0, 20 + rng.next() * 50);
+		stain.addColorStop(0, 'rgba(25,20,18,0.45)');
+		stain.addColorStop(1, 'rgba(25,20,18,0)');
+		g.save();
+		g.translate(rng.next() * 512, rng.next() * 512);
+		g.fillStyle = stain;
+		g.fillRect(-70, -70, 140, 140);
+		g.restore();
+	}
+	g.fillStyle = 'rgba(30,26,24,0.6)';
+	g.fillRect(0, 254, 512, 4); g.fillRect(254, 0, 4, 512);
+	g.fillRect(0, 0, 512, 2); g.fillRect(0, 0, 2, 512);
+	return texture(c);
+}
+
 function concrete(rng) {
 	const [c, g] = surface(256, 256);
 	g.fillStyle = rgb(PALETTE.concrete);
@@ -145,6 +169,38 @@ function concrete(rng) {
 	g.fillStyle = rgb(PALETTE.soot, 1.4);
 	g.fillRect(0, 34, 256, 6);
 	return texture(c);
+}
+
+// The upper storey of the works' buildings: 4 m of plaster with four tall windows, and a glow
+// map in which some of them are lit for the evening shift.
+function facade(rng) {
+	const [c, g] = surface(1024, 512);
+	const [gc, glow] = surface(1024, 512);
+	g.fillStyle = rgb(PALETTE.sandstone, 0.72);
+	g.fillRect(0, 0, 1024, 512);
+	grain(g, 1024, 512, rng, 0.3, 9000);
+	g.fillStyle = rgb(PALETTE.concrete, 0.8);
+	g.fillRect(0, 474, 1024, 38);
+	g.fillRect(0, 0, 1024, 26);
+	glow.fillStyle = '#000';
+	glow.fillRect(0, 0, 1024, 512);
+	for (let i = 0; i < 4; i++) {
+		const x = i * 256 + 51, lit = rng.chance(0.45);
+		g.fillStyle = rgb(PALETTE.soot, 1.2);
+		g.fillRect(x - 8, 120, 170, 260);
+		g.fillStyle = lit ? '#c9874e' : '#232a33';
+		g.fillRect(x, 128, 154, 244);
+		if (lit) {
+			glow.fillStyle = '#ffd9a0';
+			glow.fillRect(x, 128, 154, 244);
+		}
+		g.fillStyle = rgb(PALETTE.soot, 1.2);
+		g.fillRect(x + 72, 128, 10, 244);
+		g.fillRect(x, 240, 154, 10);
+		g.fillStyle = rgb(PALETTE.concrete, 0.9);
+		g.fillRect(x - 14, 372, 182, 16);
+	}
+	return { facade: texture(c), facadeGlow: texture(gc) };
 }
 
 // The plant zone's floor marking: a hazard-striped border and the site letter, on transparency.
@@ -222,6 +278,8 @@ export function createTextures() {
 		crate: crate(rng),
 		steel: steel(rng),
 		concrete: concrete(rng),
+		...facade(rng),
+		slabs: slabs(rng),
 		zoneA: zoneMark('A'),
 		zoneB: zoneMark('B'),
 		sign,

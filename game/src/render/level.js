@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import { CELL } from '../config.js';
 import { PALETTE } from '../palette.js';
 import { createRng } from '../rng.js';
+import { KINDS, PAVED } from '../map/layout.js';
 
 function createBuilder() {
 	return { pos: [], nor: [], uv: [], idx: [] };
@@ -35,6 +36,18 @@ function box(b, x0, y0, z0, x1, y1, z1, tile, top = true) {
 	if (top) quad(b, [x0, y1, z1], [w, 0, 0], [0, 0, -d], [0, 1, 0], 0, 0, 1, 1);
 }
 
+const SIDES = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+
+// One side of a wall cell between heights y0 and y1: 4 m texture tiles along it, one tile of
+// `tall` metres up it from `base`.
+function wallFace(b, c, dx, dz, y0, y1, tall, base) {
+	const h = y1 - y0, v0 = (y0 - base) / tall, v1 = (y1 - base) / tall;
+	if (dx === 1) quad(b, [c.maxX, y0, c.maxZ], [0, 0, -CELL], [0, h, 0], [1, 0, 0], -c.maxZ / 4, v0, -c.minZ / 4, v1);
+	else if (dx === -1) quad(b, [c.minX, y0, c.minZ], [0, 0, CELL], [0, h, 0], [-1, 0, 0], c.minZ / 4, v0, c.maxZ / 4, v1);
+	else if (dz === 1) quad(b, [c.minX, y0, c.maxZ], [CELL, 0, 0], [0, h, 0], [0, 0, 1], c.minX / 4, v0, c.maxX / 4, v1);
+	else quad(b, [c.maxX, y0, c.minZ], [-CELL, 0, 0], [0, h, 0], [0, 0, -1], -c.maxX / 4, v0, -c.minX / 4, v1);
+}
+
 function toMesh(b, material) {
 	const g = new THREE.BufferGeometry();
 	g.setAttribute('position', new THREE.Float32BufferAttribute(b.pos, 3));
@@ -53,31 +66,41 @@ export function buildLevel(scene, grid, tex) {
 	const mat = {
 		wall: new THREE.MeshStandardMaterial({ map: tex.brick, roughness: 0.92 }),
 		floor: new THREE.MeshStandardMaterial({ map: tex.clay, roughness: 0.96 }),
+		paved: new THREE.MeshStandardMaterial({ map: tex.slabs, roughness: 0.85, polygonOffset: true, polygonOffsetFactor: -1 }),
 		crate: new THREE.MeshStandardMaterial({ map: tex.crate, roughness: 0.85 }),
 		crateTall: new THREE.MeshStandardMaterial({ map: tex.steel, roughness: 0.55, metalness: 0.35 }),
 		barrier: new THREE.MeshStandardMaterial({ map: tex.concrete, roughness: 0.9 }),
+		facade: new THREE.MeshStandardMaterial({ map: tex.facade, emissiveMap: tex.facadeGlow, emissive: 0xffb873, emissiveIntensity: 0.95, roughness: 0.9 }),
 		shed: new THREE.MeshStandardMaterial({ map: tex.brick, color: 0x9a8a80, roughness: 1 }),
 	};
 
 	const floor = createBuilder();
 	quad(floor, [0, 0, D], [W, 0, 0], [0, 0, -D], [0, 1, 0], 0, -D / 4, W / 4, 0);
-	const floorMesh = toMesh(floor, mat.floor);
-	floorMesh.castShadow = false;
-	scene.add(floorMesh);
+	const paved = createBuilder();
+	for (const [x0, z0, x1, z1] of PAVED) {
+		const w = (x1 - x0) * CELL, d = (z1 - z0) * CELL;
+		quad(paved, [x0 * CELL, 0, z1 * CELL], [w, 0, 0], [0, 0, -d], [0, 1, 0], x0 * CELL / 4, -z1 * CELL / 4, x1 * CELL / 4, -z0 * CELL / 4);
+	}
+	for (const m of [toMesh(floor, mat.floor), toMesh(paved, mat.paved)]) {
+		m.castShadow = false;
+		scene.add(m);
+	}
 
-	// Walls: only faces that border a non-wall cell are built, so the merged mesh stays small.
-	const walls = createBuilder();
-	const isWall = (x, z) => grid.at(x, z)?.ch === '#';
+	// Walls: a face is built only where a cell rises above its neighbour, so the merged meshes stay
+	// small. Brick runs up to the yard walls' height; the building cores above show a facade.
+	const walls = createBuilder(), facades = createBuilder();
+	const yardTop = KINDS['#'].top;
 	for (const c of grid.cells) {
 		if (c.ch !== '#') continue;
-		const x0 = c.minX, x1 = c.maxX, z0 = c.minZ, z1 = c.maxZ, h = c.top;
-		const inside = (x, z) => grid.at(x, z) !== null && !isWall(x, z);
-		if (inside(c.x + 1, c.z)) quad(walls, [x1, 0, z1], [0, 0, -CELL], [0, h, 0], [1, 0, 0], -z1 / 4, 0, -z0 / 4, 1);
-		if (inside(c.x - 1, c.z)) quad(walls, [x0, 0, z0], [0, 0, CELL], [0, h, 0], [-1, 0, 0], z0 / 4, 0, z1 / 4, 1);
-		if (inside(c.x, c.z + 1)) quad(walls, [x0, 0, z1], [CELL, 0, 0], [0, h, 0], [0, 0, 1], x0 / 4, 0, x1 / 4, 1);
-		if (inside(c.x, c.z - 1)) quad(walls, [x1, 0, z0], [-CELL, 0, 0], [0, h, 0], [0, 0, -1], -x1 / 4, 0, -x0 / 4, 1);
+		for (const [dx, dz] of SIDES) {
+			const n = grid.at(c.x + dx, c.z + dz);
+			if (n === null) continue;
+			const from = n.ch === '#' ? n.top : 0;
+			if (from < yardTop) wallFace(walls, c, dx, dz, from, Math.min(c.top, yardTop), yardTop, 0);
+			if (c.top > yardTop && from < c.top) wallFace(facades, c, dx, dz, Math.max(from, yardTop), c.top, c.top - yardTop, yardTop);
+		}
 	}
-	scene.add(toMesh(walls, mat.wall));
+	scene.add(toMesh(walls, mat.wall), toMesh(facades, mat.facade));
 
 	const crates = createBuilder(), tall = createBuilder(), barriers = createBuilder();
 	for (const c of grid.cells) {

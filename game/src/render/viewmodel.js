@@ -9,7 +9,7 @@ import { WEAPONS } from '../sim/weapons.js';
 const SHAPES = {
 	wasp: { body: [0.04, 0.055, 0.17], barrel: 0.02, mag: [0.032, 0.1, 0.045], grip: 0.09, hold: [0.15, -0.15, -0.38] },
 	anvil: { body: [0.05, 0.07, 0.23], barrel: 0.05, mag: [0.036, 0.1, 0.05], grip: 0.1, hold: [0.16, -0.16, -0.4] },
-	hornet: { body: [0.055, 0.085, 0.3], barrel: 0.1, mag: [0.036, 0.17, 0.05], stock: [0.035, 0.05, 0.16], grip: 0.09, hold: [0.17, -0.17, -0.44] },
+	hornet: { body: [0.055, 0.085, 0.3], barrel: 0.12, rail: true, mag: [0.036, 0.17, 0.05], stock: [0.035, 0.05, 0.16], grip: 0.09, hold: [0.17, -0.17, -0.44] },
 	breaker: { body: [0.06, 0.075, 0.3], barrel: 0.42, pump: true, stock: [0.05, 0.09, 0.24], grip: 0.09, hold: [0.17, -0.18, -0.46] },
 	kestrel: { body: [0.058, 0.095, 0.36], barrel: 0.22, mag: [0.042, 0.17, 0.07], stock: [0.05, 0.09, 0.24], rail: true, grip: 0.1, hold: [0.17, -0.18, -0.46] },
 	longreach: { body: [0.058, 0.085, 0.42], barrel: 0.42, mag: [0.04, 0.07, 0.08], stock: [0.055, 0.11, 0.28], scope: true, grip: 0.1, hold: [0.17, -0.17, -0.48] },
@@ -56,7 +56,13 @@ function gunModel(shape, mats) {
 		const tube = mesh(new THREE.CylinderGeometry(0.016, 0.016, 0.4, 8), mats.metal, 0, -0.03, -l / 2 - 0.2, g);
 		tube.rotation.x = Math.PI / 2;
 	}
-	if (shape.rail) mesh(new THREE.BoxGeometry(0.024, 0.02, l * 0.8), mats.trim, 0, h / 2 + 0.01, 0, g);
+	if (shape.rail) {
+		// Rifle furniture: a ribbed handguard round the barrel, a sight post and the charging handle.
+		mesh(new THREE.BoxGeometry(0.024, 0.02, l * 0.8), mats.trim, 0, h / 2 + 0.01, 0, g);
+		mesh(new THREE.BoxGeometry(w * 1.05, h * 0.7, shape.barrel * 0.85), mats.wood, 0, h * 0.05, -l / 2 - shape.barrel * 0.42, g);
+		mesh(new THREE.BoxGeometry(0.012, 0.045, 0.012), mats.metal, 0, h / 2 + 0.02, -l / 2 - shape.barrel * 0.8, g);
+		mesh(new THREE.BoxGeometry(0.03, 0.015, 0.02), mats.trim, w / 2 + 0.01, h * 0.25, l * 0.25, g);
+	}
 	if (shape.scope) {
 		const scope = mesh(new THREE.CylinderGeometry(0.024, 0.028, 0.26, 12), mats.trim, 0, h / 2 + 0.035, -0.02, g);
 		scope.rotation.x = Math.PI / 2;

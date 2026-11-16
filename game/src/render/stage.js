@@ -26,7 +26,7 @@ export function createStage(container, textures, width, depth) {
 	// The sun sits where the sky texture paints its glow: low, to the south-east.
 	const sun = new THREE.DirectionalLight(PALETTE.sun, 2.9);
 	const cx = width / 2, cz = depth / 2;
-	sun.position.set(cx + 62, 24, cz + 62);
+	sun.position.set(cx + 62, 32, cz + 62);
 	sun.target.position.set(cx, 0, cz);
 	sun.castShadow = true;
 	sun.shadow.mapSize.set(2048, 2048);
